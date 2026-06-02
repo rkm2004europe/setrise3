@@ -1,4 +1,4 @@
-Enter// lib/features/news/models/news_post_model.dart
+// lib/features/news/models/news_post_model.dart
 
 class NewsPostModel {
   final String id;
