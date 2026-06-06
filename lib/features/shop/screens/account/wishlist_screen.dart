@@ -1,4 +1,4 @@
-Enter// lib/features/shop/screens/account/wishlist_screen.dart
+// lib/features/shop/screens/account/wishlist_screen.dart
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
