@@ -15,13 +15,17 @@ class CommentVM {
   final String id;
   final String userId;
   final String userName;
+  final String username; // @username
   final String? avatarUrl;
   final String? text;
   final List<CommentMedia> media;
   final DateTime date;
   int likes;
-  int reposts;
+  int upvotes;
+  int repliesCount; // لسهولة العرض
   bool liked;
+  bool upvoted;
+  bool saved;
   bool reposted;
   bool isOwn;
   List<CommentVM> replies;
@@ -31,13 +35,17 @@ class CommentVM {
     required this.id,
     required this.userId,
     required this.userName,
+    this.username = '',
     this.avatarUrl,
     this.text,
     this.media = const [],
     DateTime? date,
     this.likes = 0,
-    this.reposts = 0,
+    this.upvotes = 0,
+    this.repliesCount = 0,
     this.liked = false,
+    this.upvoted = false,
+    this.saved = false,
     this.reposted = false,
     this.isOwn = false,
     List<CommentVM>? replies,
