@@ -1,4 +1,4 @@
-here// lib/features/shop/screens/auction/widgets/auction_grid_card.dart
+// lib/features/shop/screens/auction/widgets/auction_grid_card.dart
 
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
