@@ -1,0 +1,1282 @@
+import 'dart:math' show cos, sin, pi;
+import 'dart:ui';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_text_styles.dart';
+import '../data/formatters.dart';
+import '../models/post_model.dart';
+import '../../comment/screens/comments_screen.dart';
+import '../../shar/screens/share_sheet.dart';
+import '../../user/screens/user_preview_sheet.dart';
+
+class PostCard extends StatefulWidget {
+  final PostModel post;
+  final ValueChanged<PostModel> onUpdate;
+  final VoidCallback onSwipeNext;
+  final VoidCallback? onSwipeRight;
+  final VoidCallback? onSwipeLeft;
+  final VoidCallback? onSwipeStart;
+  final VoidCallback? onSwipeEnd;
+
+  const PostCard({
+    super.key,
+    required this.post,
+    required this.onUpdate,
+    required this.onSwipeNext,
+    this.onSwipeRight,
+    this.onSwipeLeft,
+    this.onSwipeStart,
+    this.onSwipeEnd,
+  });
+
+  @override
+  State<PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin {
+  late AnimationController _heartController;
+  late Animation<double> _heartAnimation;
+  bool _showHeart = false;
+
+  double _dragX = 0.0;
+  bool _isDraggingHorizontal = false;
+  bool _isDismissing = false;
+
+  Color get _accent => _deriveAccent(widget.post.backgroundColor);
+  Color get _accentGlow => _accent.withOpacity(0.35);
+
+  Color _deriveAccent(Color base) {
+    final HSLColor hsl = HSLColor.fromColor(base);
+    return hsl.withSaturation(1.0).withLightness(0.62).toColor();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _heartController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _heartAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _heartController, curve: Curves.elasticOut),
+    );
+    _heartController.addStatusListener((s) {
+      if (s == AnimationStatus.completed) {
+        Future.delayed(const Duration(milliseconds: 350), () {
+          if (!mounted) return;
+          setState(() => _showHeart = false);
+          _heartController.reset();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _heartController.dispose();
+    super.dispose();
+  }
+
+  void _finishSwipe({bool notifyEnd = true}) {
+    if (!mounted) return;
+    setState(() {
+      _dragX = 0;
+      _isDraggingHorizontal = false;
+      _isDismissing = false;
+    });
+    if (notifyEnd) {
+      widget.onSwipeEnd?.call();
+    }
+  }
+
+  void _handleHorizontalDragStart(DragStartDetails details) {
+    if (_isDismissing) return;
+    _isDraggingHorizontal = true;
+    widget.onSwipeStart?.call();
+  }
+
+  void _handleHorizontalDragUpdate(DragUpdateDetails details) {
+    if (_isDismissing) return;
+    final width = MediaQuery.of(context).size.width;
+    setState(() {
+      _dragX = (_dragX + details.delta.dx).clamp(-width * 1.15, width * 1.15).toDouble();
+      _isDraggingHorizontal = true;
+    });
+  }
+
+  void _handleHorizontalDragEnd(DragEndDetails details) {
+    if (_isDismissing) return;
+    final width = MediaQuery.of(context).size.width;
+    final velocity = details.primaryVelocity ?? 0;
+    final passedThreshold = _dragX.abs() > width * 0.22 || velocity.abs() > 850;
+
+    if (passedThreshold) {
+      final swipeRight = _dragX >= 0 || velocity > 0;
+      final targetX = swipeRight ? width * 1.2 : -width * 1.2;
+      HapticFeedback.mediumImpact();
+      setState(() {
+        _dragX = targetX;
+        _isDismissing = true;
+      });
+      if (swipeRight) {
+        widget.onSwipeRight?.call();
+      } else {
+        widget.onSwipeLeft?.call();
+      }
+      Future.delayed(const Duration(milliseconds: 170), () {
+        if (!mounted) return;
+        widget.onSwipeNext();
+        _finishSwipe();
+      });
+    } else {
+      HapticFeedback.selectionClick();
+      _finishSwipe();
+    }
+  }
+
+  void _triggerHeart() {
+    setState(() => _showHeart = true);
+    _heartController.forward(from: 0);
+    if (!widget.post.isLiked) {
+      _toggleLike();
+    }
+  }
+
+  void _toggleLike() {
+    widget.onUpdate(
+      widget.post.copyWith(
+        isLiked: !widget.post.isLiked,
+        likesCount: widget.post.isLiked
+            ? widget.post.likesCount - 1
+            : widget.post.likesCount + 1,
+      ),
+    );
+  }
+
+  void _togglePlay() {
+    widget.onUpdate(widget.post.copyWith(isPlaying: !widget.post.isPlaying));
+  }
+
+  void _toggleFollow() {
+    widget.onUpdate(widget.post.copyWith(isFollowing: !widget.post.isFollowing));
+  }
+
+  // ── فتح التعليقات (مربوط بـ comment/) ──
+  void _openComments() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CommentsScreen(
+          contextId: widget.post.id,
+          contextName: widget.post.username,
+          accent: _accent,
+          contextType: CommentContextType.post,
+        ),
+      ),
+    );
+  }
+
+  // ── فتح المشاركة (مربوط بـ shar/) ──
+  void _sharePost() {
+    ShareSheet.show(
+      context,
+      data: ShareData(
+        id: widget.post.id,
+        title: widget.post.username,
+        subtitle: widget.post.title,
+        accentColor: _accent,
+        link: 'https://setrise.app/post/${widget.post.id}',
+      ),
+    );
+  }
+
+  // ── فتح بطاقة المستخدم (مربوط بـ user/) ──
+  void _openUserPreview() {
+    showUserPreviewSheet(
+      context,
+      userId: widget.post.userId,
+      userName: widget.post.username,
+      username: widget.post.username,
+      bio: 'Bio of ${widget.post.username}',
+      followers: 1200,
+      following: 300,
+      postsCount: 45,
+      accent: _accent,
+      onViewProfile: () {
+        // الانتقال إلى البروفايل الكامل
+      },
+    );
+  }
+
+  // ── فتح الـ Info Sheet المطور ──
+  void _showInfoSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _InfoSheet(
+        post: widget.post,
+        accent: _accent,
+        onFollow: _toggleFollow,
+        onUserTap: _openUserPreview,
+        onMessage: () => _showMessageSheet(),
+        onComments: _openComments,
+        onShare: _sharePost,
+      ),
+    );
+  }
+
+  void _showMessageSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _MessageSheet(
+        post: widget.post,
+        accent: _accent,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomSafe = MediaQuery.of(context).padding.bottom;
+    final width = MediaQuery.of(context).size.width;
+    final showInterested = _dragX > 44;
+    final showSkip = _dragX < -44;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _togglePlay,
+      onDoubleTap: _triggerHeart,
+      onHorizontalDragStart: _handleHorizontalDragStart,
+      onHorizontalDragUpdate: _handleHorizontalDragUpdate,
+      onHorizontalDragEnd: _handleHorizontalDragEnd,
+      onHorizontalDragCancel: () {
+        if (!_isDismissing) {
+          _finishSwipe();
+        }
+      },
+      child: Transform.translate(
+        offset: Offset(_dragX, 0),
+        child: Transform.rotate(
+          angle: width == 0
+              ? 0.0
+              : ((_dragX / width) * 0.08).clamp(-0.08, 0.08).toDouble(),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              _DynamicBackground(
+                baseColor: widget.post.backgroundColor,
+                accentColor: _accent,
+              ),
+              if (!widget.post.isPlaying)
+                Center(
+                  child: Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withOpacity(0.45),
+                      border: Border.all(color: _accent, width: 2),
+                      boxShadow: [
+                        BoxShadow(color: _accentGlow, blurRadius: 24)
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.play_arrow_rounded,
+                      color: _accent,
+                      size: 42,
+                    ),
+                  ),
+                ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 360,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        widget.post.backgroundColor.withOpacity(0.45),
+                        Colors.black.withOpacity(0.94),
+                      ],
+                      stops: const [0.0, 0.52, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+              if (showInterested)
+                Positioned(
+                  top: 110,
+                  left: 18,
+                  child: Transform.rotate(
+                    angle: -0.18,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.greenAccent.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: Colors.greenAccent, width: 2),
+                      ),
+                      child: const Text(
+                        'INTERESTED',
+                        style: TextStyle(
+                          color: Colors.greenAccent,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 24,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (showSkip)
+                Positioned(
+                  top: 110,
+                  right: 18,
+                  child: Transform.rotate(
+                    angle: 0.18,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: Colors.redAccent, width: 2),
+                      ),
+                      child: const Text(
+                        'SKIP',
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 26,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (_showHeart)
+                Center(
+                  child: ScaleTransition(
+                    scale: _heartAnimation,
+                    child: _StarBurst(color: _accent, size: 120),
+                  ),
+                ),
+              Positioned(
+                right: 10,
+                bottom: bottomSafe + 6,
+                child: _ActionBar(
+                  post: widget.post,
+                  accent: _accent,
+                  onLike: _toggleLike,
+                  onComment: _openComments,
+                  onShare: _sharePost,
+                  onInfo: _showInfoSheet,
+                ),
+              ),
+              Positioned(
+                bottom: bottomSafe + 2,
+                left: 14,
+                right: 80,
+                child: _BottomInfo(
+                  post: widget.post,
+                  accent: _accent,
+                  onFollow: _toggleFollow,
+                  onUserTap: _openUserPreview,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// DYNAMIC BACKGROUND
+// ═══════════════════════════════════════════════
+class _DynamicBackground extends StatelessWidget {
+  final Color baseColor;
+  final Color accentColor;
+  const _DynamicBackground({required this.baseColor, required this.accentColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ColoredBox(color: baseColor),
+        Positioned(
+          top: -60,
+          left: -60,
+          child: Container(
+            width: 280,
+            height: 280,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [
+                accentColor.withOpacity(0.28),
+                Colors.transparent,
+              ]),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: -40,
+          right: -40,
+          child: Container(
+            width: 220,
+            height: 220,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [
+                accentColor.withOpacity(0.20),
+                Colors.transparent,
+              ]),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: Opacity(
+            opacity: 0.06,
+            child: CustomPaint(painter: _NoisePainter()),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ACTION BAR (يمين الشاشة)
+// ═══════════════════════════════════════════════
+class _ActionBar extends StatelessWidget {
+  final PostModel post;
+  final Color accent;
+  final VoidCallback onLike;
+  final VoidCallback onComment;
+  final VoidCallback onShare;
+  final VoidCallback onInfo;
+
+  const _ActionBar({
+    required this.post,
+    required this.accent,
+    required this.onLike,
+    required this.onComment,
+    required this.onShare,
+    required this.onInfo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _ActionBtn(
+          icon: post.isLiked
+              ? Icons.favorite_rounded
+              : Icons.favorite_border_rounded,
+          label: Formatters.formatCount(post.likesCount),
+          color: post.isLiked ? accent : Colors.white,
+          glow: post.isLiked ? accent : Colors.transparent,
+          onTap: onLike,
+        ),
+        const SizedBox(height: 6),
+        _ActionBtn(
+          icon: Icons.chat_bubble_outline_rounded,
+          label: Formatters.formatCount(post.commentsCount),
+          color: Colors.white,
+          glow: Colors.transparent,
+          onTap: onComment,
+        ),
+        const SizedBox(height: 6),
+        _ActionBtn(
+          icon: Icons.change_history_rounded,
+          label: 'Boost',
+          color: SetColors.neonGreen,
+          glow: Colors.transparent,
+          onTap: () {},
+        ),
+        const SizedBox(height: 6),
+        _ActionBtn(
+          icon: Icons.send_rounded,
+          label: Formatters.formatCount(post.sharesCount),
+          color: Colors.white,
+          glow: Colors.transparent,
+          onTap: onShare,
+        ),
+        const SizedBox(height: 10),
+        _MusicDisk(accent: accent),
+        const SizedBox(height: 8),
+        _ActionBtn(
+          icon: Icons.keyboard_arrow_up_rounded,
+          label: 'Info',
+          color: Colors.white,
+          glow: Colors.transparent,
+          onTap: onInfo,
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color glow;
+  final VoidCallback onTap;
+
+  const _ActionBtn({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.glow,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasGlow = glow != Colors.transparent;
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: hasGlow
+                    ? [BoxShadow(color: glow, blurRadius: 14, spreadRadius: 2)]
+                    : null,
+              ),
+              child: Icon(icon, color: color, size: 30),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: SetTextStyles.labelSmall.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MusicDisk extends StatefulWidget {
+  final Color accent;
+  const _MusicDisk({required this.accent});
+  @override
+  State<_MusicDisk> createState() => _MusicDiskState();
+}
+
+class _MusicDiskState extends State<_MusicDisk>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RotationTransition(
+      turns: _ctrl,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withOpacity(0.6),
+          border: Border.all(color: widget.accent, width: 2),
+          boxShadow: [
+            BoxShadow(
+                color: widget.accent.withOpacity(0.4), blurRadius: 12),
+          ],
+        ),
+        child: Icon(Icons.music_note_rounded,
+            color: widget.accent, size: 18),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// BOTTOM INFO (اسم + وصف + متابعة)
+// ═══════════════════════════════════════════════
+class _BottomInfo extends StatelessWidget {
+  final PostModel post;
+  final Color accent;
+  final VoidCallback onFollow;
+  final VoidCallback onUserTap;
+
+  const _BottomInfo({
+    required this.post,
+    required this.accent,
+    required this.onFollow,
+    required this.onUserTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            GestureDetector(
+              onTap: onUserTap,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: accent, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                        color: accent.withOpacity(0.4), blurRadius: 10)
+                  ],
+                  color: Colors.black38,
+                ),
+                child: const Icon(Icons.person_rounded,
+                    color: Colors.white, size: 20),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: GestureDetector(
+                onTap: onUserTap,
+                child: Text(
+                  post.username,
+                  style: SetTextStyles.labelLarge.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            if (!post.isFollowing)
+              GestureDetector(
+                onTap: onFollow,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 5),
+                  decoration: BoxDecoration(
+                    border:
+                        Border.all(color: accent, width: 1.5),
+                    borderRadius: BorderRadius.circular(20),
+                    color: accent.withOpacity(0.12),
+                  ),
+                  child: Text(
+                    'Follow',
+                    style: SetTextStyles.labelSmall.copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          post.title,
+          style: SetTextStyles.postTitle.copyWith(
+            color: Colors.white,
+            height: 1.2,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// INFO SHEET (الورقة الاحترافية المطوّرة)
+// ═══════════════════════════════════════════════
+class _InfoSheet extends StatelessWidget {
+  final PostModel post;
+  final Color accent;
+  final VoidCallback onFollow;
+  final VoidCallback onUserTap;
+  final VoidCallback onMessage;
+  final VoidCallback onComments;
+  final VoidCallback onShare;
+
+  const _InfoSheet({
+    required this.post,
+    required this.accent,
+    required this.onFollow,
+    required this.onUserTap,
+    required this.onMessage,
+    required this.onComments,
+    required this.onShare,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).padding.bottom;
+    final fullBio = 'Bio كامل لصاحب المحتوى: هذا الحساب ينشر محتوى قصير، تفاعلي، ويهتم بالمشاركة السريعة والردود المباشرة.';
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (_, scrollController) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D0D0D).withOpacity(0.88),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border(top: BorderSide(color: accent.withOpacity(0.35), width: 1.4)),
+              ),
+              child: ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                children: [
+                  // مقبض
+                  Center(
+                    child: Container(
+                      width: 42, height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // صورة + اسم + متابعة (الضغط يفتح User Preview)
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: onUserTap,
+                        child: Container(
+                          width: 54, height: 54,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: accent, width: 2),
+                            color: Colors.black38,
+                          ),
+                          child: const Icon(Icons.person_rounded, color: Colors.white, size: 28),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: onUserTap,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                post.username,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Creator profile • connected to the current post',
+                                style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: onFollow,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: post.isFollowing ? Colors.white : accent.withOpacity(0.14),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: post.isFollowing ? Colors.white : accent.withOpacity(0.55),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Text(
+                            post.isFollowing ? 'Following' : 'Follow',
+                            style: TextStyle(
+                              color: post.isFollowing ? Colors.black : accent,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Bio
+                  _SectionTitle(title: 'Bio'),
+                  const SizedBox(height: 8),
+                  _DarkCard(
+                    child: Text(fullBio, style: const TextStyle(color: Colors.white70, height: 1.55, fontSize: 13)),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Content Details
+                  _SectionTitle(title: 'Content Details'),
+                  const SizedBox(height: 8),
+                  _DarkCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _InfoRow(label: 'Type', value: post.isPlaying ? 'Video / Media' : 'Image / Post', accent: accent),
+                        const SizedBox(height: 12),
+                        _InfoRow(label: 'Title', value: post.title, accent: accent),
+                        const SizedBox(height: 12),
+                        _InfoRow(label: 'Audio', value: 'Original audio', accent: accent),
+                        const SizedBox(height: 12),
+                        _InfoRow(label: 'Views', value: Formatters.formatCount(post.viewsCount), accent: accent),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Post Description
+                  _SectionTitle(title: 'Post Description'),
+                  const SizedBox(height: 8),
+                  _DarkCard(
+                    child: Text(post.title, style: const TextStyle(color: Colors.white70, height: 1.55, fontSize: 13)),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Hashtags
+                  if (post.hashtags != null) ...[
+                    _SectionTitle(title: 'Hashtags'),
+                    const SizedBox(height: 8),
+                    _DarkCard(
+                      child: Text(post.hashtags!, style: TextStyle(color: accent, fontWeight: FontWeight.w700, fontSize: 13)),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+
+                  // Quick Stats
+                  _SectionTitle(title: 'Quick Stats'),
+                  const SizedBox(height: 8),
+                  _DarkCard(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _MiniStat(label: 'Likes', value: post.likesCount.toString()),
+                        _MiniStat(label: 'Comments', value: post.commentsCount.toString()),
+                        _MiniStat(label: 'Shares', value: post.sharesCount.toString()),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── أزرار الإجراءات السريعة ──
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ActionSheetBtn(
+                          icon: Icons.message_rounded,
+                          label: 'Message',
+                          accent: accent,
+                          onTap: onMessage,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _ActionSheetBtn(
+                          icon: Icons.comment_rounded,
+                          label: 'Comments',
+                          accent: accent,
+                          onTap: onComments,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _ActionSheetBtn(
+                          icon: Icons.share_rounded,
+                          label: 'Share',
+                          accent: accent,
+                          onTap: onShare,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // زر Report (بأسلوب خفيف)
+                  GestureDetector(
+                    onTap: () {
+                      // يمكن استبداله بفتح شيت البلاغ
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Report submitted')),
+                      );
+                    },
+                    child: Container(
+                      height: 40,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(
+                        child: Text('Report / Block', style: TextStyle(color: Colors.redAccent, fontSize: 13)),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: bottom + 10),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// زر صغير داخل Info Sheet
+class _ActionSheetBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color accent;
+  final VoidCallback onTap;
+  const _ActionSheetBtn({required this.icon, required this.label, required this.accent, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 46,
+        decoration: BoxDecoration(
+          color: accent.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: accent),
+            const SizedBox(width: 6),
+            Text(label, style: TextStyle(color: accent, fontWeight: FontWeight.w700, fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// MESSAGE SHEET (رسالة سريعة)
+// ═══════════════════════════════════════════════
+class _MessageSheet extends StatefulWidget {
+  final PostModel post;
+  final Color accent;
+  const _MessageSheet({required this.post, required this.accent});
+
+  @override
+  State<_MessageSheet> createState() => _MessageSheetState();
+}
+
+class _MessageSheetState extends State<_MessageSheet> {
+  final TextEditingController _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _send() {
+    if (_ctrl.text.trim().isEmpty) return;
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Message prepared')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.42,
+      minChildSize: 0.32,
+      maxChildSize: 0.68,
+      builder: (_, controller) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              color: const Color(0xFF0C0C0C).withOpacity(0.9),
+              child: ListView(
+                controller: controller,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40, height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: Colors.white10,
+                        child: const Icon(Icons.person_rounded, color: Colors.white),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Message ${widget.post.username}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _ctrl,
+                    maxLines: 5,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Write your message...',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.45)),
+                      filled: true,
+                      fillColor: Colors.white10,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  GestureDetector(
+                    onTap: _send,
+                    child: Container(
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: widget.accent,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Center(
+                        child: Text('Send',
+                            style: TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.w900)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// عناصر مساعدة
+// ═══════════════════════════════════════════════
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  const _SectionTitle({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(title,
+        style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w900));
+  }
+}
+
+class _DarkCard extends StatelessWidget {
+  final Widget child;
+  const _DarkCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color accent;
+  const _InfoRow({required this.label, required this.value, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 84,
+          child: Text(label,
+              style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700)),
+        ),
+        Expanded(
+          child: Text(value,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800)),
+        ),
+        Icon(Icons.circle, color: accent, size: 8),
+      ],
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final String label;
+  final String value;
+  const _MiniStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 16)),
+        const SizedBox(height: 4),
+        Text(label,
+            style: const TextStyle(color: Colors.white54, fontSize: 11)),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// STAR BURST (تأثير القلب النجمي)
+// ═══════════════════════════════════════════════
+class _StarBurst extends StatelessWidget {
+  final Color color;
+  final double size;
+  const _StarBurst({required this.color, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _StarBurstPainter(color: color),
+    );
+  }
+}
+
+class _StarBurstPainter extends CustomPainter {
+  final Color color;
+  const _StarBurstPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color..style = PaintingStyle.fill;
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final outer = size.width / 2;
+    final inner = size.width / 4.5;
+    const points = 8;
+    final path = Path();
+
+    for (int i = 0; i < points * 2; i++) {
+      final angle = (i * pi / points) - pi / 2;
+      final r = i.isEven ? outer : inner;
+      final x = cx + r * cos(angle);
+      final y = cy + r * sin(angle);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.close();
+
+    final glowPaint = Paint()
+      ..color = color.withOpacity(0.3)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
+
+    canvas.drawPath(path, glowPaint);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _StarBurstPainter oldDelegate) => false;
+}
+
+// ═══════════════════════════════════════════════
+// NOISE PAINTER (تأثير الضوضاء)
+// ═══════════════════════════════════════════════
+class _NoisePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white;
+    final rng = DateTime.now().millisecondsSinceEpoch;
+
+    for (int i = 0; i < 800; i++) {
+      final x = (((rng * (i + 1) * 6364136223846793005 + 1442695040888963407) & 0xFFFF) / 0xFFFF) * size.width;
+      final y = (((rng * (i + 2) * 2862933555777941757 + 3037000499) & 0xFFFF) / 0xFFFF) * size.height;
+      canvas.drawCircle(Offset(x, y), 0.6, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _NoisePainter oldDelegate) => false;
+}
