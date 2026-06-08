@@ -1,0 +1,78 @@
+import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../data/mock_rize_posts.dart';
+import '../widgets/rize_post_card.dart';
+import '../models/rize_post_model.dart';
+
+class FollowingFeedScreen extends StatefulWidget {
+  const FollowingFeedScreen({super.key});
+
+  @override
+  State<FollowingFeedScreen> createState() => _FollowingFeedScreenState();
+}
+
+class _FollowingFeedScreenState extends State<FollowingFeedScreen> {
+  late List<RizePostModel> _posts;
+
+  @override
+  void initState() {
+    super.initState();
+    _posts = generateMockRizePosts().sublist(0, 5);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: NewsColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildTopBar(),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  await Future.delayed(const Duration(seconds: 1));
+                  setState(() {
+                    _posts = generateMockRizePosts();
+                  });
+                },
+                child: ListView.builder(
+                  itemCount: _posts.length,
+                  itemBuilder: (context, index) => RizePostCard(
+                    post: _posts[index],
+                    onUpdate: (updated) {
+                      setState(() => _posts[index] = updated);
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Icon(Icons.arrow_back_ios, color: NewsColors.textPrimary, size: 20),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'Following',
+            style: TextStyle(
+              color: NewsColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
