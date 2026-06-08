@@ -1,0 +1,20 @@
+import 'package:flutter/material.dart';
+import '../models/rize_reply_model.dart';
+import '../services/rize_reply_service.dart';
+
+class RizeReplyController extends ChangeNotifier {
+  final RizeReplyService _service = RizeReplyService();
+  List<RizeReplyModel> _replies = [];
+  bool _isLoading = false;
+
+  List<RizeReplyModel> get replies => _replies;
+  bool get isLoading => _isLoading;
+
+  Future<void> fetchReplies(String postId) async {
+    _isLoading = true;
+    notifyListeners();
+    _replies = await _service.fetchReplies(postId);
+    _isLoading = false;
+    notifyListeners();
+  }
+}
