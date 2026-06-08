@@ -1,0 +1,51 @@
+import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../models/rize_post_model.dart';
+
+class RizeQuoteCard extends StatelessWidget {
+  final RizePostModel post;
+  const RizeQuoteCard({super.key, required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: NewsColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: NewsColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: NewsColors.accent.withOpacity(0.1),
+            child: Text(
+              post.userName[0].toUpperCase(),
+              style: const TextStyle(color: NewsColors.accent, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(post.userName, style: const TextStyle(color: NewsColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13)),
+                    const SizedBox(width: 4),
+                    Text(post.username, style: const TextStyle(color: NewsColors.textSecondary, fontSize: 12)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(post.text, maxLines: 3, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: NewsColors.textPrimary, fontSize: 14)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
