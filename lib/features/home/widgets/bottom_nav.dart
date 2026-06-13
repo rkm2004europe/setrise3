@@ -21,10 +21,10 @@ class BottomNav extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              // 0: Home
+              // 0: Home (SetRize)
               _navItem(0, Icons.home_rounded, 'Home'),
-              // 1: Search
-              _navItem(1, Icons.search_rounded, 'Search'),
+              // 1: Chat (الرسائل)
+              _navItem(1, Icons.chat_bubble_rounded, 'Chat'),
               // 2: Create (+)
               _createButton(),
               // 3: Alerts
