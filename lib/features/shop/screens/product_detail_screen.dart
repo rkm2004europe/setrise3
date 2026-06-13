@@ -110,3 +110,20 @@ class ProductDetailScreen extends StatelessWidget {
     );
   }
 }
+// نفس الملف السابق مع إضافة الأزرار الجديدة في صف الأدوات
+// ...
+import '../widgets/wishlist_button.dart';
+import '../widgets/share_product_button.dart';
+
+// في build، داخل Column بعد Row البائع:
+Row(
+  children: [
+    const Icon(Icons.store, color: ShopColors.text2, size: 16),
+    const SizedBox(width: 4),
+    Text(product.sellerName, style: const TextStyle(color: ShopColors.text2)),
+    const Spacer(),
+    WishlistButton(isInWishlist: false, onToggle: () {}),
+    const SizedBox(width: 12),
+    ShareProductButton(productId: product.id, productName: product.name, description: product.description),
+  ],
+),
