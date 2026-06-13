@@ -1,3 +1,5 @@
+// lib/features/home/screens/main_screen.dart
+
 import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -26,7 +28,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   
-  int _contentTab = 0;
+  int _contentTab = 0;               // 0: SetRize, 1: News, 2: Chat, 3: Profile
   bool _panelOpen = false;
   late AnimationController _panelCtrl;
   late Animation<double> _panelAnim;
@@ -172,11 +174,9 @@ class _MainScreenState extends State<MainScreen>
         return;
       }
       
-      // 1: Search
+      // 1: Chat (الرسائل)
       if (i == 1) {
-        Navigator.of(context, rootNavigator: true).push(
-          CupertinoPageRoute(builder: (_) => const SearchScreen()),
-        );
+        _selectTab(2);
         return;
       }
 
@@ -301,7 +301,7 @@ class _MainScreenState extends State<MainScreen>
                 onSetRizeTap: _togglePanel,
                 onMenuTap: _showFilterSheet,
                 activeTabName: _tabLabels[_contentTab],
-                showSearchIcon: _contentTab == 0,
+                showSearchIcon: true,
                 onSearchTap: () {
                   Navigator.of(context, rootNavigator: true).push(
                     CupertinoPageRoute(builder: (_) => const SearchScreen()),
