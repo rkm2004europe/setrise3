@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
-class AdvancedCompareScreen extends StatelessWidget {
-  const AdvancedCompareScreen({super.key});
+class AffiliateDashboardScreen extends StatelessWidget {
+  const AffiliateDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,22 +15,29 @@ class AdvancedCompareScreen extends StatelessWidget {
             children: [
               _buildTopBar(context),
               const SizedBox(height: 20),
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    headingRowColor: WidgetStateProperty.all(ShopColors.surface),
-                    columns: const [
-                      DataColumn(label: Text('المواصفة', style: TextStyle(color: ShopColors.text))),
-                      DataColumn(label: Text('المنتج 1', style: TextStyle(color: ShopColors.text))),
-                      DataColumn(label: Text('المنتج 2', style: TextStyle(color: ShopColors.text))),
-                    ],
-                    rows: const [
-                      DataRow(cells: [DataCell(Text('السعر', style: TextStyle(color: ShopColors.text))), DataCell(Text('\$200', style: TextStyle(color: ShopColors.accent))), DataCell(Text('\$250', style: TextStyle(color: ShopColors.accent)))]),
-                      DataRow(cells: [DataCell(Text('التقييم', style: TextStyle(color: ShopColors.text))), DataCell(Text('4.5', style: TextStyle(color: ShopColors.gold))), DataCell(Text('4.2', style: TextStyle(color: ShopColors.gold)))]),
-                    ],
+              Row(children: [
+                _stat('الأرباح', '\$340'),
+                const SizedBox(width: 12),
+                _stat('النقرات', '1.2K'),
+              ]),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: ShopColors.surface, borderRadius: BorderRadius.circular(14)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('رابط الإحالة', style: TextStyle(color: ShopColors.text2, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  Text('https://setrise.shop/ref/yourID', style: TextStyle(color: ShopColors.accent, fontSize: 14)),
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: () {},
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      decoration: BoxDecoration(color: ShopColors.accent, borderRadius: BorderRadius.circular(8)),
+                      child: const Text('نسخ الرابط', style: TextStyle(color: Colors.white)),
+                    ),
                   ),
-                ),
+                ]),
               ),
             ],
           ),
@@ -39,9 +46,20 @@ class AdvancedCompareScreen extends StatelessWidget {
     );
   }
 
+  Widget _stat(String label, String value) => Expanded(
+    child: Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: ShopColors.surface, borderRadius: BorderRadius.circular(14)),
+      child: Column(children: [
+        Text(value, style: const TextStyle(color: ShopColors.accent, fontSize: 28, fontWeight: FontWeight.w900)),
+        Text(label, style: const TextStyle(color: ShopColors.text2)),
+      ]),
+    ),
+  );
+
   Widget _buildTopBar(BuildContext context) => Row(children: [
     GestureDetector(onTap: () => Navigator.pop(context), child: const Icon(Icons.arrow_back, color: ShopColors.text)),
     const SizedBox(width: 12),
-    const Text('مقارنة', style: TextStyle(color: ShopColors.text, fontSize: 20, fontWeight: FontWeight.w800)),
+    const Text('التسويق بالعمولة', style: TextStyle(color: ShopColors.text, fontSize: 20, fontWeight: FontWeight.w800)),
   ]);
 }
