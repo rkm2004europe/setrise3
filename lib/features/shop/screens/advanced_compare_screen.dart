@@ -14,28 +14,20 @@ class AdvancedCompareScreen extends StatelessWidget {
           child: Column(
             children: [
               _buildTopBar(context),
+              const SizedBox(height: 20),
               Expanded(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
                     headingRowColor: WidgetStateProperty.all(ShopColors.surface),
-                    dataRowColor: WidgetStateProperty.all(ShopColors.bg),
                     columns: const [
                       DataColumn(label: Text('المواصفة', style: TextStyle(color: ShopColors.text))),
                       DataColumn(label: Text('المنتج 1', style: TextStyle(color: ShopColors.text))),
                       DataColumn(label: Text('المنتج 2', style: TextStyle(color: ShopColors.text))),
                     ],
                     rows: const [
-                      DataRow(cells: [
-                        DataCell(Text('السعر', style: TextStyle(color: ShopColors.text))),
-                        DataCell(Text('\$200', style: TextStyle(color: ShopColors.accent))),
-                        DataCell(Text('\$250', style: TextStyle(color: ShopColors.accent))),
-                      ]),
-                      DataRow(cells: [
-                        DataCell(Text('التقييم', style: TextStyle(color: ShopColors.text))),
-                        DataCell(Text('4.5', style: TextStyle(color: ShopColors.gold))),
-                        DataCell(Text('4.2', style: TextStyle(color: ShopColors.gold))),
-                      ]),
+                      DataRow(cells: [DataCell(Text('السعر', style: TextStyle(color: ShopColors.text))), DataCell(Text('\$200', style: TextStyle(color: ShopColors.accent))), DataCell(Text('\$250', style: TextStyle(color: ShopColors.accent)))]),
+                      DataRow(cells: [DataCell(Text('التقييم', style: TextStyle(color: ShopColors.text))), DataCell(Text('4.5', style: TextStyle(color: ShopColors.gold))), DataCell(Text('4.2', style: TextStyle(color: ShopColors.gold)))]),
                     ],
                   ),
                 ),
