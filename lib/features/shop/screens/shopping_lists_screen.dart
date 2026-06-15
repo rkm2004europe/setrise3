@@ -13,21 +13,13 @@ class ShoppingListsScreen extends StatelessWidget {
           children: [
             _buildTopBar(context),
             Expanded(
-              child: ListView.builder(
+              child: ListView(
                 padding: const EdgeInsets.all(16),
-                itemCount: 3,
-                itemBuilder: (_, i) => Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(color: ShopColors.surface, borderRadius: BorderRadius.circular(14)),
-                  child: Row(children: [
-                    const Icon(Icons.list_alt, color: ShopColors.accent),
-                    const SizedBox(width: 12),
-                    Text('قائمة ${['التسوق', 'الهدايا', 'المنزل'][i]}', style: const TextStyle(color: ShopColors.text, fontWeight: FontWeight.w600)),
-                    const Spacer(),
-                    const Text('5 منتجات', style: TextStyle(color: ShopColors.text2)),
-                  ]),
-                ),
+                children: [
+                  _buildListCard('تجهيزات العيد', 8),
+                  _buildListCard('مستلزمات المكتب', 5),
+                  _buildListCard('هدايا العائلة', 12),
+                ],
               ),
             ),
           ],
@@ -35,6 +27,19 @@ class ShoppingListsScreen extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildListCard(String name, int count) => Container(
+    margin: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(color: ShopColors.surface, borderRadius: BorderRadius.circular(14)),
+    child: Row(children: [
+      const Icon(Icons.list_alt, color: ShopColors.accent),
+      const SizedBox(width: 12),
+      Expanded(child: Text(name, style: const TextStyle(color: ShopColors.text, fontWeight: FontWeight.w600))),
+      Text('$count منتجات', style: const TextStyle(color: ShopColors.text2)),
+      const Icon(Icons.chevron_right, color: ShopColors.text2),
+    ]),
+  );
 
   Widget _buildTopBar(BuildContext context) => Padding(
     padding: const EdgeInsets.all(16),
