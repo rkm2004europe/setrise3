@@ -1,20 +1,12 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
-import '../data/mock_coins.dart';
+import '../models/gift_model.dart';
 
-class CoinBalanceWidget extends StatelessWidget {
-  const CoinBalanceWidget({super.key});
+class GiftController extends ChangeNotifier {
+  int _balance = mockUserCoins;
+  int get balance => _balance;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(color: LiveColors.surface.withOpacity(0.8), borderRadius: BorderRadius.circular(20)),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.monetization_on, color: LiveColors.gold, size: 16),
-        const SizedBox(width: 4),
-        Text('$mockUserCoins', style: const TextStyle(color: LiveColors.gold, fontWeight: FontWeight.w700)),
-      ]),
-    );
+  void sendGift(GiftModel gift) {
+    _balance -= gift.coinValue;
+    notifyListeners();
   }
 }
