@@ -1,0 +1,96 @@
+import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+
+class StreamSettingsScreen extends StatefulWidget {
+  const StreamSettingsScreen({super.key});
+
+  @override
+  State<StreamSettingsScreen> createState() => _StreamSettingsScreenState();
+}
+
+class _StreamSettingsScreenState extends State<StreamSettingsScreen> {
+  String _quality = 'HD';
+  bool _mirrorFront = true;
+  bool _noiseReduction = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: LiveColors.bg,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              _buildTopBar(context),
+              const SizedBox(height: 20),
+              _buildSection('جودة البث', [
+                _buildOption('HD', _quality == 'HD', () => setState(() => _quality = 'HD')),
+                _buildOption('Full HD', _quality == 'Full HD', () => setState(() => _quality = 'Full HD')),
+                _buildOption('4K', _quality == '4K', () => setState(() => _quality = '4K')),
+              ]),
+              const SizedBox(height: 16),
+              _buildSection('إعدادات الكاميرا', [
+                SwitchListTile(
+                  title: const Text('عكس الكاميرا الأمامية', style: TextStyle(color: LiveColors.text)),
+                  value: _mirrorFront,
+                  onChanged: (v) => setState(() => _mirrorFront = v),
+                  activeColor: LiveColors.accent,
+                ),
+              ]),
+              const SizedBox(height: 16),
+              _buildSection('الصوت', [
+                SwitchListTile(
+                  title: const Text('تقليل الضوضاء', style: TextStyle(color: LiveColors.text)),
+                  value: _noiseReduction,
+                  onChanged: (v) => setState(() => _noiseReduction = v),
+                  activeColor: LiveColors.accent,
+                ),
+              ]),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSection(String title, List<Widget> children) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(color: LiveColors.text2, fontSize: 13, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          ...children,
+        ],
+      );
+
+  Widget _buildOption(String title, bool selected, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: selected ? LiveColors.accent.withOpacity(0.1) : LiveColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: selected ? LiveColors.accent : LiveColors.border),
+          ),
+          child: Row(
+            children: [
+              Text(title, style: TextStyle(color: selected ? LiveColors.accent : LiveColors.text)),
+              const Spacer(),
+              if (selected) const Icon(Icons.check, color: LiveColors.accent),
+            ],
+          ),
+        ),
+      );
+
+  Widget _buildTopBar(BuildContext context) => Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Icon(Icons.arrow_back, color: LiveColors.text),
+          ),
+          const SizedBox(width: 12),
+          const Text('إعدادات البث', style: TextStyle(color: LiveColors.text, fontSize: 20, fontWeight: FontWeight.w800)),
+        ],
+      );
+}
