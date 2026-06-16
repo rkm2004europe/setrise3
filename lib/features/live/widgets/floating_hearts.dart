@@ -1,126 +1,102 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class FloatingHearts extends StatefulWidget {
-  final bool trigger;
-  final VoidCallback onComplete;
-
-  const FloatingHearts({
-    super.key,
-    required this.trigger,
-    required this.onComplete,
-  });
+  final bool show;
+  const FloatingHearts({super.key, required this.show});
 
   @override
   State<FloatingHearts> createState() => _FloatingHeartsState();
 }
 
 class _FloatingHeartsState extends State<FloatingHearts> with SingleTickerProviderStateMixin {
-  final List<_HeartParticle> _particles = [];
+  final List<_FloatingHeart> _hearts = [];
   final Random _random = Random();
+  late AnimationController _controller;
 
   @override
-  void didUpdateWidget(FloatingHearts oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.trigger && !oldWidget.trigger) {
-      _burstHearts();
-    }
-  }
-
-  void _burstHearts() {
-    for (int i = 0; i < 15; i++) {
-      final controller = AnimationController(
-        vsync: this,
-        duration: Duration(milliseconds: 800 + _random.nextInt(600)),
-      );
-
-      final startX = (_random.nextDouble() - 0.5) * 100;
-      final startY = (_random.nextDouble() - 0.5) * 100;
-      final endX = (_random.nextDouble() - 0.5) * 300;
-      final endY = -200 - _random.nextDouble() * 300;
-
-      final positionAnim = Tween<Offset>(
-        begin: Offset(startX, startY),
-        end: Offset(endX, endY),
-      ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOut));
-
-      final scaleAnim = Tween<double>(begin: 1.2, end: 0.0).animate(CurvedAnimation(parent: controller, curve: Curves.easeIn));
-
-      final opacityAnim = Tween<double>(begin: 1.0, end: 0.0).animate(CurvedAnimation(parent: controller, curve: const Interval(0.5, 1.0)));
-
-      final particle = _HeartParticle(
-        controller: controller,
-        position: positionAnim,
-        scale: scaleAnim,
-        opacity: opacityAnim,
-        color: [
-          Colors.red,
-          Colors.pink,
-          Colors.pinkAccent,
-          Colors.redAccent,
-          Colors.deepOrange,
-        ][_random.nextInt(5)],
-      );
-
-      _particles.add(particle);
-
-      controller.forward().then((_) {
-        if (mounted) {
-          setState(() => _particles.remove(particle));
-          controller.dispose();
-          if (_particles.isEmpty) widget.onComplete();
-        }
-      });
-    }
-    setState(() {});
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..addListener(() {
+        setState(() {
+          for (final h in _hearts) {
+            h.offset -= const Offset(0, 3);
+            h.opacity -= 0.008;
+          }
+          _hearts.removeWhere((h) => h.opacity <= 0);
+        });
+      })
+    ..repeat();
   }
 
   @override
   void dispose() {
-    for (final p in _particles) {
-      p.controller.dispose();
-    }
+    _controller.dispose();
     super.dispose();
+  }
+
+  void _addHeart() {
+    if (!widget.show) return;
+    final startX = _random.nextDouble() * 200 + 50;
+    final size = _random.nextDouble() * 20 + 20;
+    _hearts.add(_FloatingHeart(
+      offset: Offset(startX, 400),
+      size: size,
+      opacity: 1.0,
+    ));
+  }
+
+  @override
+  void didUpdateWidget(covariant FloatingHearts oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.show && !oldWidget.show) {
+      // أضف 5 قلوب دفعة واحدة عند التفعيل
+      for (int i = 0; i < 5; i++) {
+        _addHeart();
+      }
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) _addHeart();
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: _particles.map((p) {
-        return AnimatedBuilder(
-          animation: p.controller,
-          builder: (_, child) {
+    return IgnorePointer(
+      child: SizedBox.expand(
+        child: Stack(
+          children: _hearts.map((h) {
             return Positioned(
-              left: MediaQuery.of(context).size.width / 2 + p.position.value.dx - 20,
-              top: MediaQuery.of(context).size.height * 0.4 + p.position.value.dy - 20,
+              bottom: h.offset.dy,
+              left: h.offset.dx,
               child: Opacity(
-                opacity: p.opacity.value,
-                child: Transform.scale(
-                  scale: p.scale.value,
-                  child: child,
+                opacity: h.opacity.clamp(0.0, 1.0),
+                child: Icon(
+                  Icons.favorite,
+                  color: LiveColors.accent,
+                  size: h.size,
                 ),
               ),
             );
-          },
-          child: Icon(Icons.favorite, color: p.color, size: 24),
-        );
-      }).toList(),
+          }).toList(),
+        ),
+      ),
     );
   }
 }
 
-class _HeartParticle {
-  final AnimationController controller;
-  final Animation<Offset> position;
-  final Animation<double> scale;
-  final Animation<double> opacity;
-  final Color color;
+class _FloatingHeart {
+  Offset offset;
+  double size;
+  double opacity;
 
-  _HeartParticle({
-    required this.controller,
-    required this.position,
-    required this.scale,
+  _FloatingHeart({
+    required this.offset,
+    required this.size,
     required this.opacity,
-    required this.color,
   });
 }
