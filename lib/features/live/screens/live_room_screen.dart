@@ -1,9 +1,9 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
 import '../models/live_room_model.dart';
 import '../models/live_comment_model.dart';
+import '../models/gift_model.dart';
 import '../data/mock_gifts.dart';
 import '../data/mock_live_comments.dart';
 import '../widgets/gift_panel.dart';
@@ -13,11 +13,13 @@ import '../widgets/live_reactions.dart';
 import '../widgets/coin_balance_widget.dart';
 import '../widgets/share_live_button.dart';
 import '../widgets/viewer_list_sheet.dart';
+import '../widgets/gift_animation.dart';
 import '../widgets/flying_comments_layer.dart';
 import '../widgets/floating_hearts.dart';
-import '../widgets/gift_animation.dart';
 import '../controllers/gift_controller.dart';
 import '../controllers/chat_live_controller.dart';
+import '../../comment/screens/comments_screen.dart';
+import '../../user/screens/user_preview_sheet.dart';
 
 class LiveRoomScreen extends StatefulWidget {
   final LiveRoomModel room;
@@ -27,79 +29,82 @@ class LiveRoomScreen extends StatefulWidget {
   State<LiveRoomScreen> createState() => _LiveRoomScreenState();
 }
 
-class _LiveRoomScreenState extends State<LiveRoomScreen> with TickerProviderStateMixin {
+class _LiveRoomScreenState extends State<LiveRoomScreen> {
   final GiftController _giftCtrl = GiftController();
   final ChatLiveController _chatCtrl = ChatLiveController();
-  
   bool _showGiftPanel = false;
   String? _currentGiftEmoji;
-  bool _heartTrigger = false;
-  
+  bool _showHearts = false;
   final List<LiveCommentModel> _comments = List.from(mockLiveComments);
-  final StreamController<LiveCommentModel> _flyingStreamCtrl = StreamController<LiveCommentModel>.broadcast();
-
-  @override
-  void dispose() {
-    _flyingStreamCtrl.close();
-    super.dispose();
-  }
 
   void _sendGift(GiftModel gift) {
     HapticFeedback.mediumImpact();
-    final comment = LiveCommentModel(
-      id: 'gc_${DateTime.now().millisecondsSinceEpoch}',
-      userId: 'me',
-      userName: 'You',
-      text: 'أرسل ${gift.name}',
-      isGift: true,
-      giftEmoji: gift.animationEmoji,
-      sentAt: DateTime.now(),
-    );
-    
     setState(() {
       _giftCtrl.sendGift(gift);
       _currentGiftEmoji = gift.animationEmoji;
-      _comments.insert(0, comment);
+      _comments.insert(
+        0,
+        LiveCommentModel(
+          id: 'gc_${DateTime.now().millisecondsSinceEpoch}',
+          userId: 'me',
+          userName: 'You',
+          text: 'أرسل ${gift.name}',
+          isGift: true,
+          giftEmoji: gift.animationEmoji,
+          sentAt: DateTime.now(),
+        ),
+      );
     });
-    
-    _flyingStreamCtrl.add(comment);
-    
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) setState(() => _currentGiftEmoji = null);
     });
   }
 
   void _sendComment(String text) {
-    final comment = LiveCommentModel(
-      id: 'c_${DateTime.now().millisecondsSinceEpoch}',
-      userId: 'me',
-      userName: 'You',
-      text: text,
-      isGift: false,
-      sentAt: DateTime.now(),
-    );
-    
     setState(() {
-      _comments.insert(0, comment);
+      _comments.insert(
+        0,
+        LiveCommentModel(
+          id: 'c_${DateTime.now().millisecondsSinceEpoch}',
+          userId: 'me',
+          userName: 'You',
+          text: text,
+          isGift: false,
+          sentAt: DateTime.now(),
+        ),
+      );
     });
-    
-    _flyingStreamCtrl.add(comment);
   }
 
-  void _onDoubleTap() {
-    _heartTrigger = true;
-    setState(() {});
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (mounted) setState(() => _heartTrigger = false);
+  void _triggerHearts() {
+    setState(() => _showHearts = true);
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) setState(() => _showHearts = false);
     });
   }
 
-  void _onLikePressed() {
-    _heartTrigger = true;
-    setState(() {});
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (mounted) setState(() => _heartTrigger = false);
-    });
+  void _openComments(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CommentsScreen(
+          contextId: widget.room.id,
+          contextName: widget.room.hostName,
+          accent: LiveColors.accent,
+          contextType: CommentContextType.live,
+        ),
+      ),
+    );
+  }
+
+  void _openHostProfile(BuildContext context) {
+    showUserPreviewSheet(
+      context,
+      userId: widget.room.hostId,
+      userName: widget.room.hostName,
+      username: '@${widget.room.hostName}',
+      accent: LiveColors.accent,
+    );
   }
 
   @override
@@ -107,7 +112,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> with TickerProviderStat
     return Scaffold(
       backgroundColor: LiveColors.bg,
       body: GestureDetector(
-        onDoubleTap: _onDoubleTap,
+        onDoubleTap: _triggerHearts,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -122,14 +127,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> with TickerProviderStat
               ),
             ),
 
-            // طبقة التعليقات الطائرة
-            FlyingCommentsLayer(commentsStream: _flyingStreamCtrl.stream),
+            // التعليقات الطائرة
+            FlyingCommentsLayer(comments: _comments),
 
-            // طبقة القلوب المتطايرة
-            FloatingHearts(
-              trigger: _heartTrigger,
-              onComplete: () {},
-            ),
+            // القلوب المتطايرة
+            FloatingHearts(show: _showHearts),
 
             // أنيميشن الهدية
             if (_currentGiftEmoji != null)
@@ -142,10 +144,15 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> with TickerProviderStat
                 ),
               ),
 
-            // شريط المضيف
-            SafeArea(child: HostInfoBar(room: widget.room)),
+            // شريط المضيف (قابل للنقر لفتح البروفايل)
+            SafeArea(
+              child: GestureDetector(
+                onTap: () => _openHostProfile(context),
+                child: HostInfoBar(room: widget.room),
+              ),
+            ),
 
-            // شريط الدردشة الجانبي
+            // الدردشة الجانبية
             Positioned(
               bottom: 80,
               left: 10,
@@ -155,22 +162,47 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> with TickerProviderStat
             ),
 
             // رصيد العملات
-            Positioned(top: 60, right: 10, child: const CoinBalanceWidget()),
+            Positioned(
+              top: 60,
+              right: 10,
+              child: CoinBalanceWidget(),
+            ),
 
-            // التفاعلات
+            // التفاعلات السريعة
             Positioned(
               bottom: 30,
               right: 10,
               child: LiveReactions(
-                onLike: _onLikePressed,
+                onLike: _triggerHearts,
                 onComment: () => _sendComment('👍'),
               ),
             ),
 
-            // مشاركة
-            Positioned(top: 60, left: 10, child: ShareLiveButton(room: widget.room)),
+            // زر المشاركة
+            Positioned(
+              top: 60,
+              left: 10,
+              child: ShareLiveButton(room: widget.room),
+            ),
 
-            // قائمة المشاهدين
+            // زر التعليقات الموحدة
+            Positioned(
+              top: 100,
+              left: 10,
+              child: GestureDetector(
+                onTap: () => _openComments(context),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: LiveColors.surface.withOpacity(0.8),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.chat_bubble, color: LiveColors.text, size: 20),
+                ),
+              ),
+            ),
+
+            // زر قائمة المشاهدين
             Positioned(
               top: 100,
               right: 10,
