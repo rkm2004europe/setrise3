@@ -6,7 +6,7 @@ import '../models/live_comment_model.dart';
 import '../models/gift_model.dart';
 import '../data/mock_gifts.dart';
 import '../data/mock_live_comments.dart';
-import '../widgets/gift_panel.dart';
+import '../widgets/enhanced_gift_panel.dart';
 import '../widgets/live_chat_bar.dart';
 import '../widgets/host_info_bar.dart';
 import '../widgets/live_reactions.dart';
@@ -152,7 +152,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
               ),
             ),
 
-            // الدردشة الجانبية
+            // الدردشة الجانبية (VIP)
             Positioned(
               bottom: 80,
               left: 10,
@@ -223,16 +223,19 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
               ),
             ),
 
-            // لوحة الهدايا
+            // لوحة الهدايا المتقدمة
             if (_showGiftPanel)
               Positioned(
                 bottom: 0,
                 left: 0,
                 right: 0,
-                child: GiftPanel(
+                child: EnhancedGiftPanel(
                   gifts: mockGifts,
-                  onSend: (gift) {
+                  onSend: (gift, message) {
                     _sendGift(gift);
+                    if (message != null && message.isNotEmpty) {
+                      _sendComment(message);
+                    }
                     setState(() => _showGiftPanel = false);
                   },
                   onClose: () => setState(() => _showGiftPanel = false),
