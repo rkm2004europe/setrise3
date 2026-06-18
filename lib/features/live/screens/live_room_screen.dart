@@ -337,3 +337,21 @@ if (_showUnifiedDashboard)
     bottom: 0, left: 0, right: 0,
     child: UnifiedHostDashboard(onEndStream: () => Navigator.pop(context)),
   ),
+// زر VIP Status
+Positioned(
+  top: 140, left: 10,
+  child: GestureDetector(
+    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VipUpgradeScreen())),
+    child: VipStatusCard(
+      currentLevel: 'VIP',
+      currentCoins: 250,
+      coinsToNextLevel: 250,
+      onUpgrade: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VipUpgradeScreen())),
+    ),
+  ),
+),
+إضافة VIP Status وWallet)
+أضف في Stack:
+
+dart
+
