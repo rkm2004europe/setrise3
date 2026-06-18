@@ -108,3 +108,17 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
     );
   }
 }
+
+
+)
+أضف داخل _LiveFeedScreenState:
+
+dart
+String? _selectedCategory;
+
+// في build، أضف قبل Expanded
+LiveCategoryChips(
+  selectedCategory: _selectedCategory,
+  onCategoryChanged: (cat) => setState(() => _selectedCategory = cat),
+),
+  
