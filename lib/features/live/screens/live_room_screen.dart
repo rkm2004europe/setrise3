@@ -265,3 +265,29 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     );
   }
 }
+ FullHostControlPanel)
+أضف هذا المتغير:
+
+dart
+bool _showFullControl = false;
+واستبدل HostControlPanel بـ FullHostControlPanel
+
+  // في build
+if (_showFullControl)
+  Positioned(
+    bottom: 20, left: 20, right: 20,
+    child: FullHostControlPanel(onEnd: () => Navigator.pop(context)),
+  ),
+
+// زر فتح اللوحة الكاملة (بجانب زر الهدايا)
+Positioned(
+  bottom: 80, right: 10,
+  child: GestureDetector(
+    onTap: () => setState(() => _showFullControl = !_showFullControl),
+    child: Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: LiveColors.surface.withOpacity(0.8), shape: BoxShape.circle),
+      child: Icon(_showFullControl ? Icons.close : Icons.tune, color: LiveColors.text),
+    ),
+  ),
+),
