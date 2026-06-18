@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../widgets/game_facecam_widget.dart';
 import '../widgets/unified_host_dashboard.dart';
+import '../../setrize/screens/set_screen.dart';
 
 class GameStreamScreen extends StatefulWidget {
   const GameStreamScreen({super.key});
@@ -77,3 +78,7 @@ class _GameStreamScreenState extends State<GameStreamScreen> {
     );
   }
 }
+GestureDetector(
+  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SetScreen())),
+  child: Container(...)
+)
