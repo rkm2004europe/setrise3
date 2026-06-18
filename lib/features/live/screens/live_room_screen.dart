@@ -291,3 +291,49 @@ Positioned(
     ),
   ),
 ),
+
+
+
+live/screens/live_room_screen.dart (دمج UnifiedHostDashboard)
+أضف المتغير:
+
+dart
+bool _showUnifiedDashboard = false;
+واستبدل منطقة التحكم
+  // زر فتح اللوحة الموحدة
+Positioned(
+  bottom: 20, right: 20,
+  child: GestureDetector(
+    onTap: () => setState(() => _showUnifiedDashboard = !_showUnifiedDashboard),
+    child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: LiveColors.surface.withOpacity(0.8), shape: BoxShape.circle),
+      child: Icon(_showUnifiedDashboard ? Icons.close : Icons.dashboard, color: LiveColors.text),
+    ),
+  ),
+),
+
+// لوحة التحكم الموحدة
+if (_showUnifiedDashboard)
+  Positioned(
+    bottom: 0, left: 0, right: 0,
+    child: UnifiedHostDashboard(onEndStream: () => Navigator.pop(context)),
+  ),// زر فتح اللوحة الموحدة
+Positioned(
+  bottom: 20, right: 20,
+  child: GestureDetector(
+    onTap: () => setState(() => _showUnifiedDashboard = !_showUnifiedDashboard),
+    child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: LiveColors.surface.withOpacity(0.8), shape: BoxShape.circle),
+      child: Icon(_showUnifiedDashboard ? Icons.close : Icons.dashboard, color: LiveColors.text),
+    ),
+  ),
+),
+
+// لوحة التحكم الموحدة
+if (_showUnifiedDashboard)
+  Positioned(
+    bottom: 0, left: 0, right: 0,
+    child: UnifiedHostDashboard(onEndStream: () => Navigator.pop(context)),
+  ),
