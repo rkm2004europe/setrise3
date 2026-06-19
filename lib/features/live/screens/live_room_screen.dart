@@ -390,3 +390,11 @@ Positioned(
 ),)
 الآن سنقوم بتحديث live_room_screen.dart بشكل نهائي ليربط كل  
 
+Widget _quickBtn(IconData icon, VoidCallback onTap) => GestureDetector(
+  onTap: onTap,
+  child: Container(
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(color: LiveColors.surface.withOpacity(0.8), shape: BoxShape.circle),
+    child: Icon(icon, color: LiveColors.text, size: 22),
+  ),
+);
