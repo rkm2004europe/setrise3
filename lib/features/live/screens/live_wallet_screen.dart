@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../controllers/coin_controller.dart';
 import 'coin_shop_screen.dart';
 import 'withdraw_screen.dart';
-import '../../wallet/screens/wallet_home_screen.dart';
 
 class LiveWalletScreen extends StatelessWidget {
-  const LiveWalletScreen({super.key});
+  final CoinController coinController;
+  const LiveWalletScreen({super.key, required this.coinController});
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +28,7 @@ class LiveWalletScreen extends StatelessWidget {
                 child: Column(children: [
                   const Icon(Icons.monetization_on, size: 48, color: LiveColors.gold),
                   const SizedBox(height: 10),
-                  const Text('250 🪙', style: TextStyle(color: LiveColors.gold, fontSize: 32, fontWeight: FontWeight.w900)),
+                  Text('${coinController.balance} 🪙', style: const TextStyle(color: LiveColors.gold, fontSize: 32, fontWeight: FontWeight.w900)),
                   const Text('رصيدك الحالي', style: TextStyle(color: LiveColors.text2)),
                 ]),
               ),
@@ -42,24 +43,24 @@ class LiveWalletScreen extends StatelessWidget {
   }
 
   Widget _btn(String label, IconData icon, VoidCallback onTap) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: LiveColors.surface, borderRadius: BorderRadius.circular(14)),
-          child: Row(children: [
-            Icon(icon, color: LiveColors.accent),
-            const SizedBox(width: 12),
-            Text(label, style: const TextStyle(color: LiveColors.text, fontWeight: FontWeight.w600)),
-            const Spacer(),
-            const Icon(Icons.chevron_right, color: LiveColors.text2),
-          ]),
-        ),
-      );
+    onTap: onTap,
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: LiveColors.surface, borderRadius: BorderRadius.circular(14)),
+      child: Row(children: [
+        Icon(icon, color: LiveColors.accent),
+        const SizedBox(width: 12),
+        Text(label, style: const TextStyle(color: LiveColors.text, fontWeight: FontWeight.w600)),
+        const Spacer(),
+        const Icon(Icons.chevron_right, color: LiveColors.text2),
+      ]),
+    ),
+  );
 
   Widget _buildTopBar(BuildContext context) => Row(children: [
-        GestureDetector(onTap: () => Navigator.pop(context), child: const Icon(Icons.arrow_back, color: LiveColors.text)),
-        const SizedBox(width: 12),
-        const Text('محفظة Live', style: TextStyle(color: LiveColors.text, fontSize: 20, fontWeight: FontWeight.w800)),
-      ]);
+    GestureDetector(onTap: () => Navigator.pop(context), child: const Icon(Icons.arrow_back, color: LiveColors.text)),
+    const SizedBox(width: 12),
+    const Text('محفظة Live', style: TextStyle(color: LiveColors.text, fontSize: 20, fontWeight: FontWeight.w800)),
+  ]);
 }
