@@ -354,4 +354,39 @@ Positioned(
 أضف في Stack:
 
 dart
+  // في _LiveRoomScreenState، أضف:
+final CoinController _coinCtrl = CoinController();
+final VipController _vipCtrl = VipController();
+
+// استبدل CoinBalanceWidget بـ:
+CoinBalanceWidget(controller: _coinCtrl),
+
+// أضف زر VIP Status:
+Positioned(
+  top: 140, left: 10,
+  child: GestureDetector(
+    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VipUpgradeScreen())),
+    child: VipStatusCard(
+      currentLevel: _vipCtrl.currentLevel.name,
+      currentCoins: _coinCtrl.balance,
+      coinsToNextLevel: (_vipCtrl.currentLevel.name == 'VIP') ? 150 : 0,
+      onUpgrade: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VipUpgradeScreen())),
+    ),
+  ),
+),
+
+// أضف قائمة سريعة أسفل الشاشة:
+Positioned(
+  bottom: 80, left: 10,
+  child: Column(
+    children: [
+      _quickBtn(Icons.shopping_bag, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LiveShopIntegrationScreen()))),
+      const SizedBox(height: 10),
+      _quickBtn(Icons.music_note, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LiveMusicIntegrationScreen()))),
+      const SizedBox(height: 10),
+      _quickBtn(Icons.map, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LiveMapIntegrationScreen()))),
+    ],
+  ),
+),)
+الآن سنقوم بتحديث live_room_screen.dart بشكل نهائي ليربط كل  
 
