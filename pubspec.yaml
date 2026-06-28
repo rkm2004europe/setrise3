@@ -15,3 +15,146 @@ dependencies:
   shared_preferences: ^2.2.0
   connectivity_plus: ^5.0.0
   get_it: ^7.6.0
+name: creator_studio
+description: "Creator Studio — a production-ready Flutter engine for short-form video creation, inspired by TikTok, Instagram Reels, and CapCut."
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+# ===========================================================================
+# CREATOR STUDIO — FINAL CONCISE pubspec.yaml
+# ---------------------------------------------------------------------------
+# Strategy: only the BEST library per concern. No duplicates, no FFI, no C++.
+# Tier 1 = MVP (camera + editor + audio + export + drafts + face + stickers)
+# Tier 2 = Professional polish (image editor + waveforms + animation + Lottie)
+# Tier 3 = Auto Captions (Whisper offline, 99 languages)
+# Tier 4 = AI background removal (selfie segmentation only)
+# Tier 5 = Live Streaming (LiveKit + WebRTC)
+# ===========================================================================
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # ─── State management ───────────────────────────────────────────────────
+  flutter_riverpod: ^2.6.1
+
+  # ─── Navigation ─────────────────────────────────────────────────────────
+  go_router: ^14.2.7
+
+  # ─── 📷 Camera (Tier 1) ─────────────────────────────────────────────────
+  camerawesome: ^2.1.0+1
+
+  # ─── 📁 Gallery (Tier 1) ────────────────────────────────────────────────
+  wechat_assets_picker: ^9.3.0
+  photo_manager: ^3.0.0
+
+  # ─── ✂️ Video editing (Tier 1) ──────────────────────────────────────────
+  video_editor_2: ^3.1.0
+  pro_video_editor: ^1.13.0
+  video_player: ^2.9.2
+
+  # ─── 🚀 Export (Tier 1) ─────────────────────────────────────────────────
+  ffmpeg_kit_flutter_new: ^6.0.3
+  easy_video_editor: ^0.1.6
+
+  # ─── 🎵 Audio (Tier 1) ──────────────────────────────────────────────────
+  just_audio: ^0.9.40
+  record: ^5.1.2
+  audio_waveforms: ^1.0.5        # Tier 2 — waveforms
+
+  # ─── 🗄️ Drafts (Tier 1) ─────────────────────────────────────────────────
+  drift: ^2.20.0
+  sqlite3_flutter_libs: ^0.5.24
+
+  # ─── ☁️ Background upload (Tier 1) ──────────────────────────────────────
+  background_downloader: ^9.5.4
+  dio: ^5.7.0
+
+  # ─── 🎭 Face detection (Tier 1) ─────────────────────────────────────────
+  google_mlkit_face_detection: ^0.12.0
+  google_mlkit_selfie_segmentation: ^0.10.0   # Tier 4 — bg removal
+
+  # ─── 😀 Stickers / text (Tier 1) ────────────────────────────────────────
+  emoji_picker_flutter: ^3.1.0
+  giphy_get: ^4.0.0
+  detectable_text_field: ^3.0.2
+
+  # ─── 🖼️ Image editor (Tier 2) ───────────────────────────────────────────
+  pro_image_editor: ^11.5.2
+
+  # ─── ✨ Animation & polish (Tier 2) ─────────────────────────────────────
+  flutter_animate: ^4.5.0
+  lottie: ^3.1.2
+
+  # ─── 🎨 GPU filters (Tier 2) ────────────────────────────────────────────
+  flutter_image_filters: ^0.7.0
+
+  # ─── 🗂️ Draggable layered canvas (Tier 2) ──────────────────────────────
+  stack_board: ^0.5.0
+
+  # ─── 🤖 Auto Captions (Tier 3) ──────────────────────────────────────────
+  flutter_whisper_kit: ^1.1.0
+
+  # ─── 🔧 Utilities (essential infrastructure) ────────────────────────────
+  path_provider: ^2.1.4
+  path: ^1.9.0
+  uuid: ^4.5.1
+  collection: ^1.18.0
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # ─── 💾 Save to gallery ─────────────────────────────────────────────────
+  gal: ^2.3.0
+
+  # ─── 🗜️ Video compression ──────────────────────────────────────────────
+  video_compress: ^3.1.3
+
+  # ─── 🔐 Permissions ─────────────────────────────────────────────────────
+  permission_handler: ^11.3.1
+
+  # ─── 📡 Live streaming (Tier 5) ─────────────────────────────────────────
+  flutter_webrtc: ^0.12.4
+  livekit_client: ^2.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+  drift_dev: ^2.20.0
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/icons/
+    - assets/fonts/
+    - assets/shaders/
+    - assets/stickers/
+
+  shaders:
+    - assets/shaders/film_grain.frag
+    - assets/shaders/vhs_glitch.frag
+    - assets/shaders/vignette.frag
+    - assets/shaders/chromatic_aberration.frag
+
+  fonts:
+    - family: SFProDisplay
+      fonts:
+        - asset: assets/fonts/SFProDisplay-Regular.ttf
+        - asset: assets/fonts/SFProDisplay-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/SFProDisplay-Semibold.ttf
+          weight: 600
+        - asset: assets/fonts/SFProDisplay-Bold.ttf
+          weight: 700
