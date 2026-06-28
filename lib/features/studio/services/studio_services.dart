@@ -8,12 +8,15 @@ import '../composition/composition_engine.dart';
 import '../drafts/draft_repository.dart';
 import '../engine/preview_engine.dart';
 import '../export/export_pipeline.dart';
-import '../live/live_streaming_service.dart';
 import '../recording/camera_recorder_service.dart';
 import '../recording/media_picker_service.dart';
 import '../render/render_pipeline.dart';
 import '../uploads/upload_pipeline.dart';
 
+/// Top-level facade for the Studio.
+///
+/// This is a PURE editor service — no social media or live streaming
+/// features. It owns the editor engine, recording, export, and upload.
 class StudioService {
   StudioService({
     required this.composition,
@@ -26,7 +29,6 @@ class StudioService {
     required this.render,
     required this.exportPipeline,
     required this.uploads,
-    required this.live,
   });
 
   final CompositionEngine composition;
@@ -39,26 +41,28 @@ class StudioService {
   final RenderPipeline render;
   final ExportPipeline exportPipeline;
   final UploadPipeline uploads;
-  final LiveStreamingService live;
 
+  /// Eagerly initialise all long-lived services.
   Future<void> initialize() async {
     await drafts.initialize();
     await faceDetection.initialize();
     await camera.initialize();
   }
 
+  /// Dispose everything.
   Future<void> dispose() async {
     preview.dispose();
     await audioPlayback.dispose();
     await faceDetection.dispose();
     await camera.dispose();
     await drafts.dispose();
-    await live.dispose();
   }
 }
 
+/// Production overrides. Injected in [AppBootstrap.compose].
 final List<Override> studioServiceOverrides = [];
 
+/// Provider for [StudioService].
 final studioServiceProvider = Provider<StudioService>((ref) {
   final composition = CompositionEngine();
   final audioPlayback = AudioPlaybackService();
@@ -79,7 +83,6 @@ final studioServiceProvider = Provider<StudioService>((ref) {
     render: RenderPipeline(),
     exportPipeline: ExportPipeline(),
     uploads: UploadPipeline(),
-    live: LiveStreamingService(),
   );
 
   ref.onDispose(service.dispose);
