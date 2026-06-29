@@ -1,12 +1,26 @@
+/// Export screen — REAL export via [ExportPipeline].
+///
+/// Calls the actual [ExportPipeline.export()] which uses either
+/// [FFmpegRenderAdapter] or [EasyVideoEditorAdapter] to render the
+/// project to an MP4 file. Shows real progress from the stream.
 library;
+
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gal/gal.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
+import '../export/export_pipeline.dart';
 import '../export/export_settings.dart';
+import '../state/pending_import.dart';
 import '../state/studio_session.dart';
 import '../theme/studio_colors.dart';
+import '../utils/id_generator.dart';
+import '../widgets/filters_panel.dart';
 import '../widgets/studio_button.dart';
 
 class ExportScreen extends ConsumerStatefulWidget {
@@ -22,6 +36,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   bool _includeAudio = true;
   bool _isExporting = false;
   double _progress = 0;
+  String _statusText = '';
+  String? _outputPath;
 
   @override
   Widget build(BuildContext context) {
@@ -44,27 +60,20 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   _buildSection('Audio'),
                   _buildToggle(
                     value: _includeAudio,
-                    onChanged: (v) =>
-                        setState(() => _includeAudio = v),
+                    onChanged: (v) => setState(() => _includeAudio = v),
                   ),
                   if (_isExporting) ...[
                     const SizedBox(height: StudioSpacing.xxl),
-                    LinearProgressIndicator(
-                      value: _progress,
-                      backgroundColor: StudioColors.surfaceRaised,
-                      color: StudioColors.accent,
-                    ),
-                    const SizedBox(height: StudioSpacing.md),
-                    Text('${(_progress * 100).toInt()}%',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            color: StudioColors.textSecondary,
-                            fontWeight: FontWeight.w600)),
+                    _buildProgressIndicator(),
+                  ],
+                  if (_outputPath != null && !_isExporting) ...[
+                    const SizedBox(height: StudioSpacing.xl),
+                    _buildSuccessCard(),
                   ],
                 ],
               ),
             ),
-            _buildFooter(),
+            if (!_isExporting) _buildFooter(),
           ],
         ),
       ),
@@ -171,40 +180,236 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     );
   }
 
-  Widget _buildFooter() {
-    return Padding(
+  Widget _buildProgressIndicator() {
+    return Container(
       padding: const EdgeInsets.all(StudioSpacing.xl),
-      child: StudioButton(
-        label: _isExporting ? 'Exporting…' : 'Export',
-        icon: Icons.download_rounded,
-        size: StudioButtonSize.large,
-        fullWidth: true,
-        isLoading: _isExporting,
-        onPressed: _isExporting ? null : _startExport,
+      decoration: BoxDecoration(
+        color: StudioColors.surfaceRaised,
+        borderRadius: BorderRadius.circular(StudioRadius.lg),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(
+            width: 48,
+            height: 48,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: StudioColors.accent,
+            ),
+          ),
+          const SizedBox(height: StudioSpacing.lg),
+          Text(
+            '${(_progress * 100).toInt()}%',
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              color: StudioColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: StudioSpacing.sm),
+          Text(
+            _statusText,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: StudioColors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: StudioSpacing.lg),
+          LinearProgressIndicator(
+            value: _progress,
+            backgroundColor: StudioColors.separator,
+            color: StudioColors.accent,
+            minHeight: 4,
+          ),
+        ],
       ),
     );
   }
 
+  Widget _buildSuccessCard() {
+    return Container(
+      padding: const EdgeInsets.all(StudioSpacing.lg),
+      decoration: BoxDecoration(
+        color: StudioColors.accentTertiary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(StudioRadius.lg),
+        border: Border.all(
+            color: StudioColors.accentTertiary.withOpacity(0.3), width: 1),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.check_circle,
+              color: StudioColors.accentTertiary, size: 48),
+          const SizedBox(height: StudioSpacing.md),
+          const Text('Export complete!',
+              style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: StudioColors.textPrimary)),
+          const SizedBox(height: StudioSpacing.sm),
+          Text(
+            'Saved to: ${_outputPath!.split('/').last}',
+            style: const TextStyle(
+                color: StudioColors.textSecondary, fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: StudioSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: StudioButton(
+                  label: 'Save to Gallery',
+                  icon: Icons.save_alt,
+                  size: StudioButtonSize.medium,
+                  variant: StudioButtonVariant.secondary,
+                  onPressed: _saveToGallery,
+                ),
+              ),
+              const SizedBox(width: StudioSpacing.sm),
+              Expanded(
+                child: StudioButton(
+                  label: 'Done',
+                  icon: Icons.check,
+                  size: StudioButtonSize.medium,
+                  onPressed: () => context.go('/editor'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Padding(
+      padding: const EdgeInsets.all(StudioSpacing.xl),
+      child: StudioButton(
+        label: _outputPath != null ? 'Export Again' : 'Export',
+        icon: Icons.download_rounded,
+        size: StudioButtonSize.large,
+        fullWidth: true,
+        onPressed: _startExport,
+      ),
+    );
+  }
+
+  // ── Real export ─────────────────────────────────────────────────────────
+
   Future<void> _startExport() async {
-    setState(() => _isExporting = true);
+    setState(() {
+      _isExporting = true;
+      _progress = 0;
+      _statusText = 'Preparing...';
+      _outputPath = null;
+    });
+
     final session = ref.read(studioSessionProvider);
+    final project = session.project;
+
+    final hasVideo = project.layers.any((l) => l is VideoLayer);
+    if (!hasVideo) {
+      setState(() {
+        _isExporting = false;
+        _statusText = 'No video to export';
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No video to export. Please add a video layer first.')),
+        );
+      }
+      return;
+    }
+
     final settings = ExportSettings(
       format: _format,
       quality: _quality,
       includeAudio: _includeAudio,
-      aspectRatio: session.project.aspectRatio,
+      aspectRatio: project.aspectRatio,
+      filterId: ref.read(selectedFilterProvider),
     );
 
-    for (var i = 0; i <= 100; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 30));
-      setState(() => _progress = i / 100);
+    final tempDir = await getTemporaryDirectory();
+    final outputPath = p.join(
+      tempDir.path,
+      'studio_export_${IdGenerator.newExport()}.mp4',
+    );
+
+    final exportJob = ExportJob(
+      id: IdGenerator.newExport(),
+      project: project,
+      settings: settings,
+    );
+
+    final pipeline = ExportPipeline();
+
+    try {
+      await for (final progress in pipeline.export(exportJob)) {
+        if (!mounted) return;
+
+        setState(() {
+          _progress = progress.fraction;
+          _statusText = switch (progress.stage) {
+            Stage.queued => 'Queued...',
+            Stage.rendering => 'Rendering video... ${(progress.fraction * 100).toInt()}%',
+            Stage.postProcessing => 'Applying post-processing...',
+            Stage.finalising => 'Finalising...',
+            Stage.done => 'Done!',
+            Stage.failed => 'Failed: ${progress.message ?? "unknown error"}',
+          };
+        });
+
+        if (progress.stage == Stage.done) {
+          final finalPath = progress.message ?? outputPath;
+          if (File(finalPath).existsSync() && finalPath != outputPath) {
+            await File(finalPath).copy(outputPath);
+          }
+          
+          setState(() {
+            _outputPath = outputPath;
+            _isExporting = false;
+          });
+          ref.read(pendingImportProvider.notifier).state = outputPath;
+        }
+
+        if (progress.stage == Stage.failed) {
+          setState(() => _isExporting = false);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Export failed: ${progress.message ?? "unknown"}')),
+            );
+          }
+          return;
+        }
+      }
+    } on Object catch (e) {
+      if (mounted) {
+        setState(() {
+          _isExporting = false;
+          _statusText = 'Error: $e';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export error: $e')),
+        );
+      }
     }
-    setState(() => _isExporting = false);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Export complete')),
-      );
-      context.go('/');
+  }
+
+  Future<void> _saveToGallery() async {
+    if (_outputPath == null) return;
+    try {
+      await Gal.putVideo(_outputPath!, album: 'Creator Studio');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Saved to gallery! 📸')),
+        );
+      }
+    } on Object catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save: $e')),
+        );
+      }
     }
   }
 }
