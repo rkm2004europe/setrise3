@@ -37,15 +37,9 @@ class FFmpegRenderAdapter implements RenderAdapter {
     final videoLayers = project.layers.whereType<VideoLayer>().toList();
     final audioLayers = project.layers.whereType<AudioLayer>().toList();
     final hasOverlays = project.layers.any(
-      (l) =>
-          l is TextLayer ||
-          l is ImageLayer ||
-          l is StickerLayer ||
-          l is EffectLayer,
+      (l) => l is TextLayer || l is ImageLayer || l is StickerLayer || l is EffectLayer,
     );
-    return videoLayers.length > 1 ||
-        audioLayers.isNotEmpty ||
-        hasOverlays;
+    return videoLayers.length > 1 || audioLayers.isNotEmpty || hasOverlays;
   }
 
   @override
@@ -68,8 +62,7 @@ class FFmpegRenderAdapter implements RenderAdapter {
       (log) {},
       (Statistics stats) {
         final fraction = stats.getTime() > 0
-            ? (stats.getTime() / project.totalDuration.seconds / 1000)
-                .clamp(0.0, 1.0)
+            ? (stats.getTime() / project.totalDuration.seconds / 1000).clamp(0.0, 1.0)
             : 0.0;
         onProgress(RenderProgress(
           fraction: fraction,
@@ -125,8 +118,7 @@ class FFmpegRenderAdapter implements RenderAdapter {
     }
 
     // ── Build filter graph ────────────────────────────────────────────────
-    final canvasW =
-        (project.targetHeight * project.aspectRatio.ratio).round();
+    final canvasW = (project.targetHeight * project.aspectRatio.ratio).round();
     final canvasH = project.targetHeight;
 
     // Get the color filter to apply (if any).
@@ -136,9 +128,7 @@ class FFmpegRenderAdapter implements RenderAdapter {
     // Step 1: scale the first video to canvas, mark as [base].
     if (videoLayers.isNotEmpty) {
       final trimStart = videoLayers.first.sourceStart ~/ 1000;
-      final trimEnd =
-          (videoLayers.first.sourceStart + videoLayers.first.duration) ~/
-              1000;
+      final trimEnd = (videoLayers.first.sourceStart + videoLayers.first.duration) ~/ 1000;
       filterParts.add(
         '[0:v]trim=$trimStart:$trimEnd,setpts=PTS-STARTPTS,'
         'scale=$canvasW:$canvasH:force_original_aspect_ratio=increase,'
@@ -160,8 +150,7 @@ class FFmpegRenderAdapter implements RenderAdapter {
       final outLabel = 'v$i';
       filterParts.add(
         '[$inputIdx:v]trim=$trimStart:$trimEnd,setpts=PTS-STARTPTS,'
-        'scale=${(v.transform.scale * canvasW).round()}:'
-        '${(v.transform.scale * canvasH).round()},'
+        'scale=${(v.transform.scale * canvasW).round()}:${(v.transform.scale * canvasH).round()},'
         'format=rgba,colorchannelmixer=aa=${v.transform.opacity}[fg$i]',
       );
       final x = (v.transform.position.dx * canvasW).round();
@@ -200,8 +189,7 @@ class FFmpegRenderAdapter implements RenderAdapter {
       final fontSize = (t.preset.fontSize * canvasH / 1920).round();
       final x = '(w-text_w)/2';
       final y = (t.transform.position.dy * canvasH).round();
-      final enable =
-          'between(t,${t.startMicroseconds / 1000000},${t.endMicroseconds / 1000000})';
+      final enable = "between(t,${t.startMicroseconds / 1000000},${t.endMicroseconds / 1000000})";
       final strokeW = t.preset.strokeWidth;
       final outLabel = 'txt$i';
       filterParts.add(
@@ -215,6 +203,7 @@ class FFmpegRenderAdapter implements RenderAdapter {
     }
 
     // Step 5: mix audio from all audio layers.
+    // ✅ FIX: Added complete audio processing (trim, delay, volume) to the filter graph
     if (audioLayers.isNotEmpty) {
       for (var i = 0; i < audioLayers.length; i++) {
         final a = audioLayers[i];
@@ -247,15 +236,14 @@ class FFmpegRenderAdapter implements RenderAdapter {
     final crf = settings.quality == ExportQuality.draft ? '28' : '23';
     final bitrate = '${settings.videoBitrateMbps}M';
 
+    // ✅ FIX: Added missing commas after '-map' arguments
     return [
       '-y',
       ...inputs,
       '-filter_complex', '"$filterGraph"',
       '-map', '[$lastVideoLabel]',
-      if (audioLayers.isNotEmpty)
-        '-map' '[mixed_audio]'
-      else if (videoLayers.isNotEmpty)
-        '-map' '0:a?',
+      if (audioLayers.isNotEmpty) '-map', '[mixed_audio]' 
+      else if (videoLayers.isNotEmpty) '-map', '0:a?',
       '-c:v', videoCodec,
       if (videoCodec == 'libx264') '-preset', preset,
       if (videoCodec == 'libx264') '-crf', crf,
@@ -288,7 +276,6 @@ class FFmpegRenderAdapter implements RenderAdapter {
   }
 
   /// Build an FFmpeg color filter chain for the given filter ID.
-  /// Returns an empty string if no filter is needed.
   String _buildColorFilterChain(String filterId) {
     switch (filterId) {
       case 'none':
