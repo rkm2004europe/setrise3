@@ -1,3 +1,7 @@
+/// Filters panel — applies REAL color filters to the video preview.
+///
+/// Uses [ColorFilter.matrix] for real-time preview. The filter is
+/// stored on the video layer and read by the FFmpeg adapter during export.
 library;
 
 import 'package:flutter/material.dart';
