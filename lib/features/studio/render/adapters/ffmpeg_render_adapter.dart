@@ -5,13 +5,17 @@ import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit_config.dart';
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_session.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:ffmpeg_kit_flutter_new/statistics.dart';
 
 import '../../entities/layer.dart';
 import '../../entities/project.dart';
+import '../../export/export_settings.dart';
 import '../../render/render_pipeline.dart';
+import '../../utils/typedefs.dart';
 
+/// Transitions supported by FFmpeg's xfade filter.
 enum FFmpegTransition {
   fade, wipeleft, wiperight, wipeup, wipedown,
   slideleft, slideright, slideup, slidedown,
@@ -33,9 +37,15 @@ class FFmpegRenderAdapter implements RenderAdapter {
     final videoLayers = project.layers.whereType<VideoLayer>().toList();
     final audioLayers = project.layers.whereType<AudioLayer>().toList();
     final hasOverlays = project.layers.any(
-      (l) => l is TextLayer || l is ImageLayer || l is StickerLayer || l is EffectLayer,
+      (l) =>
+          l is TextLayer ||
+          l is ImageLayer ||
+          l is StickerLayer ||
+          l is EffectLayer,
     );
-    return videoLayers.length > 1 || audioLayers.isNotEmpty || hasOverlays;
+    return videoLayers.length > 1 ||
+        audioLayers.isNotEmpty ||
+        hasOverlays;
   }
 
   @override
@@ -85,9 +95,10 @@ class FFmpegRenderAdapter implements RenderAdapter {
     return outputPath;
   }
 
+  /// Build the FFmpeg command for [project].
   String _buildCommand(
     StudioProject project,
-    dynamic settings,
+    ExportSettings settings,
     String outputPath,
   ) {
     final inputs = <String>[];
@@ -99,30 +110,39 @@ class FFmpegRenderAdapter implements RenderAdapter {
     final textLayers = layers.whereType<TextLayer>().toList();
     final audioLayers = layers.whereType<AudioLayer>().toList();
 
+    // ── Collect inputs ────────────────────────────────────────────────────
     for (final v in videoLayers) {
-      final path = project.sourceById(v.source)?.mapOrNull(file: (s) => s.path);
+      final path = v.source.mapOrNull(file: (s) => s.path);
       if (path != null) inputs.add('-i "$path"');
     }
     for (final img in imageLayers) {
-      final path = project.sourceById(img.source)?.mapOrNull(file: (s) => s.path);
+      final path = img.source.mapOrNull(file: (s) => s.path);
       if (path != null) inputs.add('-i "$path"');
     }
     for (final a in audioLayers) {
-      final path = project.sourceById(a.source)?.mapOrNull(file: (s) => s.path);
+      final path = a.source.mapOrNull(file: (s) => s.path);
       if (path != null) inputs.add('-i "$path"');
     }
 
-    final canvasW = (project.targetHeight * project.aspectRatio.ratio).round();
+    // ── Build filter graph ────────────────────────────────────────────────
+    final canvasW =
+        (project.targetHeight * project.aspectRatio.ratio).round();
     final canvasH = project.targetHeight;
 
+    // Get the color filter to apply (if any).
+    final filterId = settings.filterId;
+    final colorFilterChain = _buildColorFilterChain(filterId);
+
+    // Step 1: scale the first video to canvas, mark as [base].
     if (videoLayers.isNotEmpty) {
       final trimStart = videoLayers.first.sourceStart ~/ 1000;
       final trimEnd =
-          (videoLayers.first.sourceStart + videoLayers.first.duration) ~/ 1000;
+          (videoLayers.first.sourceStart + videoLayers.first.duration) ~/
+              1000;
       filterParts.add(
         '[0:v]trim=$trimStart:$trimEnd,setpts=PTS-STARTPTS,'
         'scale=$canvasW:$canvasH:force_original_aspect_ratio=increase,'
-        'crop=$canvasW:$canvasH,setsar=1[base]',
+        'crop=$canvasW:$canvasH,setsar=1$colorFilterChain[base]',
       );
     } else {
       filterParts.add(
@@ -130,6 +150,7 @@ class FFmpegRenderAdapter implements RenderAdapter {
       );
     }
 
+    // Step 2: overlay each subsequent video layer.
     var lastVideoLabel = 'base';
     var inputIdx = 1;
     for (var i = 1; i < videoLayers.length; i++) {
@@ -153,6 +174,7 @@ class FFmpegRenderAdapter implements RenderAdapter {
       inputIdx++;
     }
 
+    // Step 3: overlay image layers.
     for (var i = 0; i < imageLayers.length; i++) {
       final img = imageLayers[i];
       final outLabel = 'img$i';
@@ -171,6 +193,7 @@ class FFmpegRenderAdapter implements RenderAdapter {
       inputIdx++;
     }
 
+    // Step 4: burn in text layers via drawtext.
     for (var i = 0; i < textLayers.length; i++) {
       final t = textLayers[i];
       final escapedText = _escapeDrawtext(t.text);
@@ -178,7 +201,7 @@ class FFmpegRenderAdapter implements RenderAdapter {
       final x = '(w-text_w)/2';
       final y = (t.transform.position.dy * canvasH).round();
       final enable =
-          "between(t,${t.startMicroseconds / 1000000},${t.endMicroseconds / 1000000})";
+          'between(t,${t.startMicroseconds / 1000000},${t.endMicroseconds / 1000000})';
       final strokeW = t.preset.strokeWidth;
       final outLabel = 'txt$i';
       filterParts.add(
@@ -191,7 +214,7 @@ class FFmpegRenderAdapter implements RenderAdapter {
       lastVideoLabel = outLabel;
     }
 
-    final audioFilterParts = <String>[];
+    // Step 5: mix audio from all audio layers.
     if (audioLayers.isNotEmpty) {
       for (var i = 0; i < audioLayers.length; i++) {
         final a = audioLayers[i];
@@ -199,35 +222,32 @@ class FFmpegRenderAdapter implements RenderAdapter {
         final trimEnd = (a.sourceStart + a.duration) ~/ 1000;
         final delayMs = a.startMicroseconds ~/ 1000;
         final vol = a.volume;
-        audioFilterParts.add(
+        filterParts.add(
           '[$inputIdx:a]atrim=$trimStart:$trimEnd,asetpts=PTS-STARTPTS,'
           'adelay=$delayMs|$delayMs,volume=$vol[aud$i]',
         );
         inputIdx++;
       }
-      final amixInputs = audioFilterParts
-          .asMap()
-          .entries
-          .map((e) => '[aud${e.key}]')
-          .join('');
+      final amixInputs = List.generate(
+        audioLayers.length,
+        (i) => '[aud$i]',
+      ).join('');
       filterParts.add(
-        '${audioFilterParts.map((p) => p.split(']').first + ']').join(";")};'
-        '${amixInputs}amix=inputs=${audioLayers.length}:duration=longest[mixed_audio]',
+        '$amixInputs amix=inputs=${audioLayers.length}:duration=longest[mixed_audio]',
       );
     }
 
     final filterGraph = filterParts.join(';');
 
+    // ── Build final command ───────────────────────────────────────────────
     final videoCodec = enableHwAccel
         ? (Platform.isIOS ? 'h264_videotoolbox' : 'h264_mediacodec')
         : 'libx264';
-    final audioCodec = 'aac';
-    final crf = settings.quality?.name == 'draft' ? '28' : '23';
-    final bitrate = settings.videoBitrateMbps != null
-        ? '${settings.videoBitrateMbps}M'
-        : null;
+    const audioCodec = 'aac';
+    final crf = settings.quality == ExportQuality.draft ? '28' : '23';
+    final bitrate = '${settings.videoBitrateMbps}M';
 
-    final cmd = [
+    return [
       '-y',
       ...inputs,
       '-filter_complex', '"$filterGraph"',
@@ -239,17 +259,15 @@ class FFmpegRenderAdapter implements RenderAdapter {
       '-c:v', videoCodec,
       if (videoCodec == 'libx264') '-preset', preset,
       if (videoCodec == 'libx264') '-crf', crf,
-      if (bitrate != null) '-b:v', bitrate,
+      '-b:v', bitrate,
       '-pix_fmt', 'yuv420p',
       '-c:a', audioCodec,
-      '-b:a', '${settings.audioBitrateKbps ?? 128}k',
-      '-ac', '${settings.audioChannels ?? 2}',
-      '-ar', '${settings.audioSampleRate ?? 48000}',
+      '-b:a', '${settings.audioBitrateKbps}k',
+      '-ac', '${settings.audioChannels}',
+      '-ar', '${settings.audioSampleRate}',
       '-movflags', '+faststart',
       outputPath,
     ].join(' ');
-
-    return cmd;
   }
 
   String _escapeDrawtext(String text) {
@@ -268,6 +286,31 @@ class FFmpegRenderAdapter implements RenderAdapter {
         '${g.toRadixString(16).padLeft(2, '0')}'
         '${b.toRadixString(16).padLeft(2, '0')}';
   }
-}
 
-int _colorToInt(dynamic c) => c is int ? c : (c.value as int);
+  /// Build an FFmpeg color filter chain for the given filter ID.
+  /// Returns an empty string if no filter is needed.
+  String _buildColorFilterChain(String filterId) {
+    switch (filterId) {
+      case 'none':
+        return '';
+      case 'warm':
+        return ',colorchannelmixer=rr=1.1:bb=0.9:gg=1.0';
+      case 'cool':
+        return ',colorchannelmixer=rr=0.9:bb=1.1:gg=0.95';
+      case 'vivid':
+        return ',eq=saturation=1.5:contrast=1.2';
+      case 'sepia':
+        return ',colorchannelmixer=rr=0.393:rg=0.349:rb=0.272:'
+            'gr=0.769:gg=0.686:gb=0.534:'
+            'br=0.189:bg=0.168:bb=0.131';
+      case 'grayscale':
+        return ',colorchannelmixer=rr=0.299:rg=0.299:rb=0.299:'
+            'gr=0.587:gg=0.587:gb=0.587:'
+            'br=0.114:bg=0.114:bb=0.114';
+      case 'invert':
+        return ',negate=1';
+      default:
+        return '';
+    }
+  }
+}
