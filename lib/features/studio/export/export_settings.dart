@@ -1,3 +1,4 @@
+/// Render/export configuration.
 library;
 
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -10,10 +11,10 @@ part 'export_settings.g.dart';
 enum ExportFormat { mp4H264, mp4H265, mov, webm, gif }
 
 enum ExportQuality {
-  draft,
-  standard,
-  high,
-  ultra,
+  draft,    // 480p, low bitrate — fast preview
+  standard, // 720p — typical
+  high,     // 1080p — recommended
+  ultra,    // 2160p — social-ready
 }
 
 @freezed
@@ -32,6 +33,9 @@ class ExportSettings with _$ExportSettings {
     @Default(2) int audioChannels,
     @Default(48000) int audioSampleRate,
     String? outputPathOverride,
+    /// Color filter to apply during export (e.g. 'warm', 'cool', 'sepia').
+    /// 'none' = no filter. See [FilterRegistry].
+    @Default('none') String filterId,
   }) = _ExportSettings;
 
   factory ExportSettings.fromJson(Map<String, dynamic> json) =>
@@ -39,6 +43,7 @@ class ExportSettings with _$ExportSettings {
 
   const ExportSettings._();
 
+  /// Target height in pixels for the chosen quality.
   int get targetHeightPx => switch (quality) {
         ExportQuality.draft => 480,
         ExportQuality.standard => 720,
@@ -46,5 +51,7 @@ class ExportSettings with _$ExportSettings {
         ExportQuality.ultra => 2160,
       };
 
-  int get targetWidthPx => (targetHeightPx * aspectRatio.ratio).round();
+  /// Target width derived from aspect ratio + height.
+  int get targetWidthPx =>
+      (targetHeightPx * aspectRatio.ratio).round();
 }
