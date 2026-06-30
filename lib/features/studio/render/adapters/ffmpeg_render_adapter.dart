@@ -203,7 +203,6 @@ class FFmpegRenderAdapter implements RenderAdapter {
     }
 
     // Step 5: mix audio from all audio layers.
-    // ✅ FIX: Added complete audio processing (trim, delay, volume) to the filter graph
     if (audioLayers.isNotEmpty) {
       for (var i = 0; i < audioLayers.length; i++) {
         final a = audioLayers[i];
@@ -236,17 +235,17 @@ class FFmpegRenderAdapter implements RenderAdapter {
     final crf = settings.quality == ExportQuality.draft ? '28' : '23';
     final bitrate = '${settings.videoBitrateMbps}M';
 
-    // ✅ FIX: Added missing commas after '-map' arguments
+    // ✅ FIX: Used spread operator (...) for -map conditional arguments
     return [
       '-y',
       ...inputs,
       '-filter_complex', '"$filterGraph"',
       '-map', '[$lastVideoLabel]',
-      if (audioLayers.isNotEmpty) '-map', '[mixed_audio]' 
-      else if (videoLayers.isNotEmpty) '-map', '0:a?',
+      if (audioLayers.isNotEmpty) ...['-map', '[mixed_audio]']
+      else if (videoLayers.isNotEmpty) ...['-map', '0:a?'],
       '-c:v', videoCodec,
-      if (videoCodec == 'libx264') '-preset', preset,
-      if (videoCodec == 'libx264') '-crf', crf,
+      if (videoCodec == 'libx264') ...['-preset', preset],
+      if (videoCodec == 'libx264') ...['-crf', crf],
       '-b:v', bitrate,
       '-pix_fmt', 'yuv420p',
       '-c:a', audioCodec,
