@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../entities/layer.dart'; // ✅ FIX: Added missing import for VideoLayer
 import '../export/export_pipeline.dart';
 import '../export/export_settings.dart';
 import '../state/pending_import.dart';
@@ -321,18 +322,21 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       return;
     }
 
+    // ✅ FIX: Calculate outputPath BEFORE creating settings
+    final tempDir = await getTemporaryDirectory();
+    final outputPath = p.join(
+      tempDir.path,
+      'studio_export_${IdGenerator.newExport()}.mp4',
+    );
+
+    // ✅ FIX: Pass outputPathOverride to ExportSettings
     final settings = ExportSettings(
       format: _format,
       quality: _quality,
       includeAudio: _includeAudio,
       aspectRatio: project.aspectRatio,
       filterId: ref.read(selectedFilterProvider),
-    );
-
-    final tempDir = await getTemporaryDirectory();
-    final outputPath = p.join(
-      tempDir.path,
-      'studio_export_${IdGenerator.newExport()}.mp4',
+      outputPathOverride: outputPath,
     );
 
     final exportJob = ExportJob(
