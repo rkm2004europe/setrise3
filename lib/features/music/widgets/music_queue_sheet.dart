@@ -4,7 +4,6 @@ import '../models/track_model.dart';
 
 class MusicQueueSheet extends StatelessWidget {
   final List<TrackModel> queue;
-
   const MusicQueueSheet({super.key, required this.queue});
 
   @override
@@ -19,6 +18,7 @@ class MusicQueueSheet extends StatelessWidget {
           const SizedBox(height: 12),
           const Text('قائمة الانتظار', style: TextStyle(color: MusicColors.text, fontWeight: FontWeight.w800)),
           const SizedBox(height: 12),
+          if (queue.isEmpty) const Text('لا توجد أغاني في الانتظار', style: TextStyle(color: MusicColors.text2)),
           ...queue.map((t) => ListTile(
             leading: Text(t.coverEmoji, style: const TextStyle(fontSize: 24)),
             title: Text(t.title, style: const TextStyle(color: MusicColors.text)),
