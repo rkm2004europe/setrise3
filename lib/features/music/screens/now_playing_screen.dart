@@ -4,8 +4,10 @@ import '../models/track_model.dart';
 import '../widgets/music_progress_bar.dart';
 import '../widgets/like_button.dart';
 import '../widgets/share_music_button.dart';
+import '../widgets/music_queue_sheet.dart';
 import '../../comment/screens/comments_screen.dart';
 import '../../user/screens/user_preview_sheet.dart';
+import 'lyrics_screen.dart';
 
 class NowPlayingScreen extends StatefulWidget {
   final TrackModel track;
@@ -107,6 +109,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   ));
                 }),
                 _actionBtn(Icons.playlist_add, 'Add', () {}),
+                _actionBtn(Icons.lyrics, 'Lyrics', () {
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => LyricsScreen(trackTitle: track.title),
+                  ));
+                }),
+                _actionBtn(Icons.queue_music, 'Queue', () {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => const MusicQueueSheet(queue: []),
+                  );
+                }),
               ],
             ),
             const Spacer(),
