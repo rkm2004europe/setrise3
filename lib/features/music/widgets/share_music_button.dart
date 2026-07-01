@@ -12,6 +12,7 @@ class ShareMusicButton extends StatelessWidget {
     return GestureDetector(
       onTap: () => ShareSheet.show(context, data: ShareData(
         id: track.id, title: track.title, subtitle: track.artist, accentColor: MusicColors.accent,
+        link: 'https://setrise.app/music/${track.id}',
       )),
       child: const Icon(Icons.ios_share, color: MusicColors.text, size: 22),
     );
