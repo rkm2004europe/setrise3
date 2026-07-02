@@ -4,10 +4,12 @@ import '../models/track_model.dart';
 import '../widgets/music_progress_bar.dart';
 import '../widgets/like_button.dart';
 import '../widgets/share_music_button.dart';
-import '../widgets/music_queue_sheet.dart';
+import '../widgets/now_playing_swipe.dart';
+import '../controllers/library_controller.dart';
 import '../../comment/screens/comments_screen.dart';
 import '../../user/screens/user_preview_sheet.dart';
 import 'lyrics_screen.dart';
+import '../widgets/music_queue_sheet.dart';
 
 class NowPlayingScreen extends StatefulWidget {
   final TrackModel track;
@@ -19,6 +21,13 @@ class NowPlayingScreen extends StatefulWidget {
 
 class _NowPlayingScreenState extends State<NowPlayingScreen> {
   bool _isPlaying = true;
+  final _libraryCtrl = LibraryController();
+
+  @override
+  void initState() {
+    super.initState();
+    _libraryCtrl.addToRecentlyPlayed(widget.track);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,15 +37,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // شريط علوي
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.keyboard_arrow_down, color: MusicColors.text, size: 32),
-                  ),
+                  GestureDetector(onTap: () => Navigator.pop(context), child: const Icon(Icons.keyboard_arrow_down, color: MusicColors.text, size: 32)),
                   const Spacer(),
                   const Text('Now Playing', style: TextStyle(color: MusicColors.text2, fontSize: 13)),
                   const Spacer(),
@@ -45,18 +50,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               ),
             ),
             const Spacer(),
-            // غلاف كبير
-            Container(
-              width: 300, height: 300,
-              decoration: BoxDecoration(
-                color: MusicColors.accent.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: MusicColors.accent.withOpacity(0.3)),
-              ),
-              child: Center(child: Text(track.coverEmoji, style: const TextStyle(fontSize: 120))),
+            NowPlayingSwipe(
+              track: track,
+              onNext: () {},
+              onPrevious: () {},
             ),
             const SizedBox(height: 30),
-            // اسم الأغنية والفنان (قابل للنقر لفتح البروفايل)
             GestureDetector(
               onTap: () => showUserPreviewSheet(context, userId: track.artist, userName: track.artist, username: '@${track.artist}', accent: MusicColors.accent),
               child: Column(
@@ -69,13 +68,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            // شريط التقدم
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: MusicProgressBar(duration: track.duration),
             ),
             const SizedBox(height: 20),
-            // أزرار التحكم
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -85,11 +82,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 const SizedBox(width: 16),
                 GestureDetector(
                   onTap: () => setState(() => _isPlaying = !_isPlaying),
-                  child: Container(
-                    width: 72, height: 72,
-                    decoration: const BoxDecoration(color: MusicColors.accent, shape: BoxShape.circle),
-                    child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 40),
-                  ),
+                  child: Container(width: 72, height: 72, decoration: const BoxDecoration(color: MusicColors.accent, shape: BoxShape.circle), child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 40)),
                 ),
                 const SizedBox(width: 16),
                 IconButton(icon: const Icon(Icons.skip_next, color: MusicColors.text, iconSize: 36), onPressed: () {}),
@@ -98,29 +91,16 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               ],
             ),
             const SizedBox(height: 20),
-            // أزرار التفاعل
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                LikeButton(track: track),
+                LikeButton(track: track, controller: _libraryCtrl),
                 _actionBtn(Icons.comment, 'Comments', () {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => CommentsScreen(contextId: track.id, contextName: track.title, accent: MusicColors.accent),
-                  ));
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => CommentsScreen(contextId: track.id, contextName: track.title, accent: MusicColors.accent)));
                 }),
                 _actionBtn(Icons.playlist_add, 'Add', () {}),
-                _actionBtn(Icons.lyrics, 'Lyrics', () {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => LyricsScreen(trackTitle: track.title),
-                  ));
-                }),
-                _actionBtn(Icons.queue_music, 'Queue', () {
-                  showModalBottomSheet(
-                    context: context,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) => const MusicQueueSheet(queue: []),
-                  );
-                }),
+                _actionBtn(Icons.lyrics, 'Lyrics', () => Navigator.push(context, MaterialPageRoute(builder: (_) => LyricsScreen(trackTitle: track.title)))),
+                _actionBtn(Icons.queue_music, 'Queue', () => showModalBottomSheet(context: context, backgroundColor: Colors.transparent, builder: (_) => const MusicQueueSheet(queue: []))),
               ],
             ),
             const Spacer(),
@@ -133,11 +113,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Widget _actionBtn(IconData icon, String label, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
-      child: Column(children: [
-        Icon(icon, color: MusicColors.text2, size: 24),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: MusicColors.text2, fontSize: 11)),
-      ]),
+      child: Column(children: [Icon(icon, color: MusicColors.text2, size: 24), const SizedBox(height: 4), Text(label, style: const TextStyle(color: MusicColors.text2, fontSize: 11))]),
     );
   }
 }
