@@ -1,8 +1,8 @@
 // lib/features/shop/screens/shop_screen.dart
-// wrapper بسيط مثل الأصل
+// نقطة الدخول لوحدة المتجر — Wrapper يغلّف ShopHomeScreen
 
-import 'package:flutter/cupertino.dart';
-import 'package:setrise/features/shop/screens/shop_home_screen.dart';
+import 'package:flutter/material.dart';
+import 'shop_home_screen.dart';
 
 class ShopScreen extends StatelessWidget {
   const ShopScreen({super.key});
@@ -10,4 +10,3 @@ class ShopScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const ShopHomeScreen();
 }
-
