@@ -16,18 +16,10 @@ class LibraryService {
     if (exists) { _liked.removeWhere((t) => t.id == track.id); } else { _liked.add(track); }
   }
 
-  void removeLiked(String trackId) {
-    _liked.removeWhere((t) => t.id == trackId);
-  }
-
   void addToRecentlyPlayed(TrackModel track) {
     _recently.insert(0, track);
     if (_recently.length > 50) _recently.removeLast();
   }
 
   bool isLiked(String id) => _liked.any((t) => t.id == id);
-
-  void createPlaylist(String name) {
-    _playlists.add(PlaylistModel(id: 'pl_${DateTime.now().millisecondsSinceEpoch}', name: name, coverEmoji: '🎵', creator: 'You', trackCount: 0));
-  }
 }
