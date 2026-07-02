@@ -1,49 +1,60 @@
 // lib/features/shop/services/cart_service.dart
+// Singleton + ChangeNotifier + ValueNotifier
 
 import 'package:flutter/foundation.dart';
-import 'package:setrise/features/shop/models/shop_models.dart';
+import '../models/cart_model.dart';
+import '../models/product_model.dart';
 
 class CartService extends ChangeNotifier {
   static final CartService _instance = CartService._();
   factory CartService() => _instance;
   CartService._();
 
-  final List<CartItem> _items = [];
+  final List<CartItemModel> _items = [];
 
-  List<CartItem> get itemsList => List.unmodifiable(_items);
-  double get subtotal => _items.fold(0, (sum, i) => sum + i.price * i.quantity);
+  List<CartItemModel> get itemsList => List.unmodifiable(_items);
+  double get subtotal => _items.fold(0.0, (sum, i) => sum + i.product.price * i.quantity);
   int get totalItems => _items.fold(0, (sum, i) => sum + i.quantity);
 
-  final ValueNotifier<List<CartItem>> items = ValueNotifier([]);
+  final ValueNotifier<List<CartItemModel>> items = ValueNotifier(const []);
 
-  void addItem(CartItem item) {
-    final idx = _items.indexWhere((i) => i.id == item.id);
+  void addItem(ProductModel product, {int quantity = 1}) {
+    final idx = _items.indexWhere((i) => i.product.id == product.id);
     if (idx != -1) {
-      _items[idx].quantity++;
+      _items[idx].quantity += quantity;
     } else {
-      _items.add(item);
+      _items.add(CartItemModel(product: product, quantity: quantity));
     }
-    items.value = List.from(_items);
-    notifyListeners();
+    _notify();
   }
 
-  void removeFromCart(String id) {
-    _items.removeWhere((i) => i.id == id);
-    items.value = List.from(_items);
-    notifyListeners();
+  void removeFromCart(String productId) {
+    _items.removeWhere((i) => i.product.id == productId);
+    _notify();
   }
 
-  void updateQuantity(String id, int newQty) {
-    final idx = _items.indexWhere((i) => i.id == id);
-    if (idx != -1) {
-      if (newQty <= 0) {
-        _items.removeAt(idx);
-      } else {
-        _items[idx].quantity = newQty;
-      }
-      items.value = List.from(_items);
-      notifyListeners();
+  void increment(String productId) {
+    final idx = _items.indexWhere((i) => i.product.id == productId);
+    if (idx != -1) { _items[idx].quantity++; _notify(); }
+  }
+
+  void decrement(String productId) {
+    final idx = _items.indexWhere((i) => i.product.id == productId);
+    if (idx == -1) return;
+    if (_items[idx].quantity <= 1) {
+      _items.removeAt(idx);
+    } else {
+      _items[idx].quantity--;
     }
+    _notify();
+  }
+
+  void clear() { _items.clear(); _notify(); }
+
+  bool isInCart(String productId) => _items.any((i) => i.product.id == productId);
+
+  void _notify() {
+    items.value = List.from(_items);
+    notifyListeners();
   }
 }
-
