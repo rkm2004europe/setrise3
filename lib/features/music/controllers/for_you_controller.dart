@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/track_model.dart';
-import '../services/music_api_service.dart';
+import '../services/recommendation_service.dart';
 
 class ForYouController extends ChangeNotifier {
-  final MusicApiService _service = MusicApiService();
+  final RecommendationService _service = RecommendationService();
   List<TrackModel> _tracks = [];
   bool _isLoading = false;
 
@@ -13,13 +13,8 @@ class ForYouController extends ChangeNotifier {
   Future<void> load() async {
     _isLoading = true;
     notifyListeners();
-    _tracks = await _service.fetchRecommended();
+    _tracks = await _service.getRecommended([]);
     _isLoading = false;
-    notifyListeners();
-  }
-
-  void toggleLike(int index) {
-    _tracks[index].isLiked = !_tracks[index].isLiked;
     notifyListeners();
   }
 }
