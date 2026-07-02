@@ -13,7 +13,7 @@ class ProductModel {
   final int stock;
   final bool hasDelivery;
   final double? deliveryFee;
-  final bool codAvailable; // الدفع عند الاستلام
+  final bool codAvailable;
 
   ProductModel({
     required this.id,
