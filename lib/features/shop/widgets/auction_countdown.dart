@@ -1,12 +1,5 @@
 // lib/features/shop/widgets/auction_countdown.dart
-//
-// عدّاد تنازلي للمزاد — يُحدَّث كل ثانية
-//
-// الإصلاحات:
-//   - إضافة Timer.periodic لتحديث العدّاد فعلياً
-//   - التوقف تلقائياً عند انتهاء المزاد (يظهر "انتهى")
-//   - التخلص من الـ Timer في dispose() لتفادي تسرب الذاكرة
-//   - تنسيق الزمن بصيغة HH:MM:SS
+// Timer.periodic فعلي
 
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -15,13 +8,9 @@ import '../models/auction_model.dart';
 
 class AuctionCountdown extends StatefulWidget {
   final AuctionModel auction;
-  final VoidCallback? onEnded; // استدعاء عند انتهاء المزاد
+  final VoidCallback? onEnded;
 
-  const AuctionCountdown({
-    super.key,
-    required this.auction,
-    this.onEnded,
-  });
+  const AuctionCountdown({super.key, required this.auction, this.onEnded});
 
   @override
   State<AuctionCountdown> createState() => _AuctionCountdownState();
@@ -77,36 +66,22 @@ class _AuctionCountdownState extends State<AuctionCountdown> {
         children: [
           Icon(Icons.timer_off, color: ShopColors.red, size: 14),
           SizedBox(width: 4),
-          Text(
-            'انتهى المزاد',
-            style: TextStyle(
-              color: ShopColors.red,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-            ),
-          ),
+          Text('انتهى المزاد',
+            style: TextStyle(color: ShopColors.red, fontWeight: FontWeight.w700, fontSize: 13)),
         ],
       );
     }
 
-    // تغيير اللون عند اقتراب الانتهاء (أقل من ساعة)
-    final color =
-        _left.inMinutes < 60 ? ShopColors.red : ShopColors.accent;
+    final color = _left.inMinutes < 60 ? ShopColors.red : ShopColors.accent;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(Icons.timer, color: color, size: 14),
         const SizedBox(width: 4),
-        Text(
-          _format(_left),
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-            fontFeatures: const [FontFeature.tabularFigures()],
-          ),
-        ),
+        Text(_format(_left),
+          style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13,
+            fontFeatures: const [FontFeature.tabularFigures()])),
       ],
     );
   }
