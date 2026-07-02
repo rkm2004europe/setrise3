@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../models/track_model.dart';
+import '../controllers/library_controller.dart';
 import '../../user/screens/user_preview_sheet.dart';
 
 class TrackTile extends StatelessWidget {
   final TrackModel track;
   final VoidCallback onTap;
+  final LibraryController? libraryController;
+  final bool showRemoveButton;
 
-  const TrackTile({super.key, required this.track, required this.onTap});
+  const TrackTile({
+    super.key,
+    required this.track,
+    required this.onTap,
+    this.libraryController,
+    this.showRemoveButton = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +38,13 @@ class TrackTile extends StatelessWidget {
                 ),
               ]),
             ),
-            Text('${track.duration.inMinutes}:${(track.duration.inSeconds % 60).toString().padLeft(2, '0')}', style: const TextStyle(color: MusicColors.text2, fontSize: 13)),
+            if (showRemoveButton && libraryController != null)
+              GestureDetector(
+                onTap: () => libraryController!.removeLiked(track.id),
+                child: const Icon(Icons.close, color: MusicColors.text2, size: 18),
+              ),
+            if (!showRemoveButton)
+              Text('${track.duration.inMinutes}:${(track.duration.inSeconds % 60).toString().padLeft(2, '0')}', style: const TextStyle(color: MusicColors.text2, fontSize: 13)),
           ],
         ),
       ),
