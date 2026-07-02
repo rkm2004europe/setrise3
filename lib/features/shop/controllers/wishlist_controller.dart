@@ -1,11 +1,5 @@
 // lib/features/shop/controllers/wishlist_controller.dart
-//
-// متحكم قائمة الأمنيات — Singleton + ChangeNotifier
-//
-// الإصلاحات:
-//   - تحويل إلى Singleton حتى يبقى محفوظاً عبر جلسة التطبيق
-//   - إضافة clear() و size
-//   - إبقاء الـ API الأصلي (toggle, isInWishlist, items)
+// Singleton + ChangeNotifier
 
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
@@ -43,8 +37,7 @@ class WishlistController extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool isInWishlist(String productId) =>
-      _items.any((p) => p.id == productId);
+  bool isInWishlist(String productId) => _items.any((p) => p.id == productId);
 
   void clear() {
     _items.clear();
