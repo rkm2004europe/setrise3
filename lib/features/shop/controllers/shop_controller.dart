@@ -1,12 +1,5 @@
 // lib/features/shop/controllers/shop_controller.dart
-//
-// متحكم تحميل المنتجات — Singleton + ChangeNotifier
-//
-// الإصلاحات:
-//   - تحويل إلى Singleton
-//   - إضافة معالجة أخطاء (try/catch + _error)
-//   - استخدام isLoading في finally لضمان إعادة التعيين حتى عند الفشل
-//   - إضافة refresh() لإعادة التحميل
+// Singleton + ChangeNotifier + معالجة أخطاء
 
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
@@ -27,7 +20,6 @@ class ShopController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  /// تحميل المنتجات من الخدمة
   Future<void> loadProducts() async {
     if (_isLoading) return;
     _isLoading = true;
@@ -44,24 +36,20 @@ class ShopController extends ChangeNotifier {
     }
   }
 
-  /// إعادة التحميل
   Future<void> refresh() => loadProducts();
 
-  /// فلترة المنتجات حسب الفئة
   List<ProductModel> byCategory(String category) {
     if (category == 'الكل' || category.isEmpty) return _products;
     return _products.where((p) => p.category == category).toList();
   }
 
-  /// بحث في المنتجات
   List<ProductModel> search(String query) {
     if (query.isEmpty) return _products;
     final q = query.toLowerCase();
-    return _products
-        .where((p) =>
-            p.name.toLowerCase().contains(q) ||
-            p.description.toLowerCase().contains(q) ||
-            p.category.toLowerCase().contains(q))
-        .toList();
+    return _products.where((p) =>
+      p.name.toLowerCase().contains(q) ||
+      p.description.toLowerCase().contains(q) ||
+      p.category.toLowerCase().contains(q)
+    ).toList();
   }
 }
