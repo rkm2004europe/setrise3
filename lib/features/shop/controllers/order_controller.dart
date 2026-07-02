@@ -1,12 +1,5 @@
 // lib/features/shop/controllers/order_controller.dart
-//
-// متحكم الطلبات — Singleton + ChangeNotifier
-//
-// الإصلاحات:
-//   - تحويل إلى Singleton
-//   - استخدام OrderService بدل الوصول المباشر لـ mockOrders
-//   - إضافة loadOrders() و isLoading و error
-//   - تحديث cancelOrder() لاستدعاء الخدمة
+// Singleton + ChangeNotifier + معالجة أخطاء
 
 import 'package:flutter/material.dart';
 import '../models/order_model.dart';
@@ -27,7 +20,6 @@ class OrderController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  /// تحميل الطلبات من الخدمة
   Future<void> loadOrders() async {
     if (_isLoading) return;
     _isLoading = true;
@@ -44,7 +36,6 @@ class OrderController extends ChangeNotifier {
     }
   }
 
-  /// إلغاء طلب
   Future<bool> cancelOrder(String orderId) async {
     try {
       await _service.cancelOrder(orderId);
@@ -57,14 +48,10 @@ class OrderController extends ChangeNotifier {
     }
   }
 
-  /// فلترة حسب الحالة
   List<OrderModel> byStatus(OrderStatus status) =>
-      _orders.where((o) => o.status == status).toList();
+    _orders.where((o) => o.status == status).toList();
 
-  /// الطلبات النشطة (غير مُسلَّمة وغير ملغاة)
-  List<OrderModel> get activeOrders => _orders
-      .where((o) =>
-          o.status != OrderStatus.delivered &&
-          o.status != OrderStatus.cancelled)
-      .toList();
+  List<OrderModel> get activeOrders => _orders.where((o) =>
+    o.status != OrderStatus.delivered && o.status != OrderStatus.cancelled
+  ).toList();
 }
