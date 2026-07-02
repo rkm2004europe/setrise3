@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
 import '../models/track_model.dart';
-import '../data/mock_tracks.dart';
+import '../controllers/for_you_controller.dart';
 import '../widgets/music_card.dart';
 import '../widgets/mini_player.dart';
 import 'now_playing_screen.dart';
@@ -17,17 +16,14 @@ class ForYouScreen extends StatefulWidget {
 }
 
 class _ForYouScreenState extends State<ForYouScreen> {
-  late PageController _pageCtrl;
+  final _controller = ForYouController();
+  final _pageCtrl = PageController();
   int _currentIndex = 0;
-  late List<TrackModel> _tracks;
-  TrackModel? _currentTrack;
 
   @override
   void initState() {
     super.initState();
-    _tracks = List.from(mockTracks)..shuffle();
-    _pageCtrl = PageController();
-    _updateCurrentTrack();
+    _controller.load();
   }
 
   @override
@@ -36,23 +32,16 @@ class _ForYouScreenState extends State<ForYouScreen> {
     super.dispose();
   }
 
-  void _updateCurrentTrack() {
-    if (_tracks.isNotEmpty && _currentIndex < _tracks.length) {
-      _currentTrack = _tracks[_currentIndex];
-    }
+  void _openPlayer(TrackModel track) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => NowPlayingScreen(track: track)));
   }
 
-  void _onPageChanged(int i) {
-    setState(() {
-      _currentIndex = i;
-      _updateCurrentTrack();
-    });
+  void _onLike(TrackModel track) {
+    setState(() => track.isLiked = !track.isLiked);
   }
 
-  void _openPlayer() {
-    if (_currentTrack != null) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => NowPlayingScreen(track: _currentTrack!)));
-    }
+  void _onShare(TrackModel track) {
+    // ShareSheet.show(...)
   }
 
   @override
@@ -65,22 +54,22 @@ class _ForYouScreenState extends State<ForYouScreen> {
             PageView.builder(
               controller: _pageCtrl,
               scrollDirection: Axis.vertical,
-              itemCount: _tracks.length,
-              onPageChanged: _onPageChanged,
+              itemCount: _controller.tracks.length,
+              onPageChanged: (i) => setState(() => _currentIndex = i),
               itemBuilder: (_, i) {
-                final track = _tracks[i];
+                final track = _controller.tracks[i];
                 return MusicCard(
                   track: track,
-                  onTap: () => _openPlayer(),
-                  onLike: () => setState(() => track.isLiked = !track.isLiked),
-                  onShare: () {},
+                  onTap: () => _openPlayer(track),
+                  onLike: () => _onLike(track),
+                  onShare: () => _onShare(track),
                 );
               },
             ),
             Positioned(
               top: 0, left: 0, right: 0,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
                     const Text('For You', style: TextStyle(color: MusicColors.text, fontSize: 22, fontWeight: FontWeight.w900)),
@@ -98,10 +87,10 @@ class _ForYouScreenState extends State<ForYouScreen> {
                 ),
               ),
             ),
-            if (_currentTrack != null)
+            if (_controller.tracks.isNotEmpty)
               Positioned(
                 bottom: 0, left: 0, right: 0,
-                child: MiniPlayer(track: _currentTrack!, onTap: _openPlayer),
+                child: MiniPlayer(track: _controller.tracks[_currentIndex], onTap: () => _openPlayer(_controller.tracks[_currentIndex])),
               ),
           ],
         ),
